@@ -12,7 +12,8 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 
  * Voorbeeld-implementatie toevoegen.
  * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
- * `timeout` en `status` worden in twee betekenissen gebruikt. Hernoemen?
+ * Sommige elementen (`timeout`, `status`, `tokens`) worden in twee
+   betekenissen gebruikt. Hernoemen?
 
 ## Eigenschappen van de server
 
@@ -110,6 +111,13 @@ Wat de parser betreft:
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
  * Een onbekende waarde geeft een `501 Not Implemented`.
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
+
+Suggestie:
+
+element   | type   | default         | omschrijving
+----------|--------|-----------------|------------------------
+maxtokens | int    | 0 (geen limiet) | skip zinnen die meer dan dit aantal tokens hebben
+
 
 Voorbeeld aanroep, tekst volgt na json-object:
 
