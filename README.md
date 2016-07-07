@@ -63,7 +63,7 @@ message | string
 
 Er worden onderstaande codes gebruikt. Dit zijn standaard
 http-statuscodes. Bij sommige fouten kan het zijn dat de server geen
-`json` terug stuurt, maar alleen een http-statuscode in de headers.
+json terug stuurt, maar alleen een http-statuscode in de headers.
 
 code | status                | omschrijving
 -----|-----------------------|----------------------------------
@@ -78,4 +78,125 @@ code | status                | omschrijving
 
 ## Lijst van requests
 
-### 
+### Request: parse
+
+Doel: zend een tekst naar de server om te laten parsen.
+
+Parameters:
+
+element | type   | default | voorwaarde   | omschrijving
+--------|--------|---------|--------------|------------------------
+lines   | bool   | `false` |              | true: één zin per regel; false: doorlopenede tekst
+tokens  | bool   | `false` | lines: true  | zinnen zijn getokeniseerd
+labels  | bool   | `false` | lines: true  | zinnen hebben labels
+label   | string | `"doc"` | lines: false | prefix voor labels
+
+Voorbeeld aanroep, tekst volgt na json-object:
+
+```json
+{
+    "request": "parse",
+    "lines": true,
+    "tokens": true,
+    "labels": true
+}
+doc.1.p.1.s.1|Ik besta .
+doc.1.p.1.s.2|Jij bestaat .
+```
+
+Bij succes krijg je deze elementen terug:
+
+element | type   |  omschrijving
+--------|--------|--------------
+code    | int    | `202`
+status  | string | `Accepted`
+id      | string | id van job
+lines   | int    | aantal zinnen, eventueel na splitsen van lopende tekst in zinnen
+timeout | int    | tijd in seconden waarbinnen output opgevraagd moet worden voordat job wordt gecanceld
+
+De waarde van `timeout` is bij benadering. Als je ietsje over de tijd
+heen zit voordat je uitvoer opvraagd, dan is er niets aan de hand, maar
+als je fors over de tijd heen gaat, dan wordt de job op de server gecanceld.
+
+Je mag ook eerder resultaten opvragen, bijvoorbeeld als je maar een of
+twee zinnen laat parsen. Een goede strategie is om de eerste batch snel
+op te vragen, en de wachttijd voor elke volgende batch te verlengen tot
+je aan de timeout zit.
+
+Voorbeeld uitvoer:
+
+```json
+{
+    "code": 202,
+    "status": "Accepted",
+    "id": "118587257602604880",
+    "lines": 2,
+    "timeout": 300
+}
+```
+
+### Request: output
+
+Doel: opvragen van (deel van) de uitvoer van een job, momenteel alleen
+jobs van type `parse`.
+
+Parameters:
+
+element | type   | omschrijving
+--------|--------|-------------
+id      | string | id van de job
+
+Voorbeeld aanroep:
+
+```json
+{
+    "request": "output",
+    "id": "118587257602604880"
+}
+```
+
+Resultaat als er geen fout is opgetreden:
+
+element  | type   | omschrijving
+---------|--------|-----------
+code     | int    | `200`
+status   | string | `OK`
+finished | bool   | `true` als parsen van alle zinnen is voltooid
+batch    | array van items | de zinnen geparst tot nu toe sinds laatste aanroep 
+
+De zinnen in batch hoeven niet aansluiten te zijn, en de volgorde is niet
+gedefinieerd.
+
+Wanneer `finished` false is, dan dien je weer binnen de timeout de
+volgende batch op te vragen.
+
+Elementen in een item in `batch`:
+
+element | type   | voorwaarde | omschrijving
+--------|--------|------------|-------------
+status  | string |            | `ok` of `fail`
+lineno  | int    |            | zinnummer
+label   | string | indien aanwezig | label van de zin
+xml     | string | status" ok | de parse van de zin
+log     | string |            | error-uitvoer van de parser, of van een andere fout
+
+Voorbeeld uitvoer:
+
+```json
+{
+    "code": 200,  
+    "status": "OK",
+    "finished": true,
+    "batch": [
+{"status":"ok","lineno":2,"label":"doc.1.p.1.s.2","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,je,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"jij\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"je\" persoon=\"2v\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,2v,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"jij\" sense=\"jij\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"jij\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg3,intransitive)\" id=\"3\" infl=\"sg3\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,met-t)\" pt=\"ww\" pvagr=\"met-t\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"bestaat\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">jij bestaat</sentence>\n</alpino_ds>\n","log":""},
+{"status":"ok","lineno":1,"label":"doc.1.p.1.s.1","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,fir,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"ik\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"fir\" persoon=\"1\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,1,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"ik\" sense=\"ik\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"ik\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg1,intransitive)\" id=\"3\" infl=\"sg1\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,ev)\" pt=\"ww\" pvagr=\"ev\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"besta\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">ik besta</sentence>\n</alpino_ds>\n","log":""},
+   ]
+}
+```
+
+
+### Request: cancel
+
+### Request: info
+
+
