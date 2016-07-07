@@ -30,7 +30,7 @@ Alternatief voorstel:
    of `"server.hints":false` om aan te geven of de server deze feature
    ondersteunt.
 
-## Request en reply
+## Request en result
 
 Deze API beschrijft hoe je met json via http kunt communiceren met een
 server die Alpino gebruikt om tekst te parsen. 
