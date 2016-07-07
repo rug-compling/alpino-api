@@ -1,4 +1,4 @@
-# Alpino API
+# Alpino API versie 0.1
 
 Een API voor een Alpino-server.
 
@@ -10,6 +10,7 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 
 ### TO DO
 
+ * Voorbeeld-implementatie toevoegen.
  * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
 
 ## Eigenschappen van de server
@@ -20,12 +21,12 @@ dat rechte haken **geen** speciale betekenis hebben.
 
 Alternatief voorstel:
 
- * Met een parse-request kan de optie `"hint":true` gebruikt worden om
+ * Met een parse-request kan de optie `"hints":true` gebruikt worden om
    aan te geven dat rechte haken wel een speciale betekenis hebben.
    Als de server deze mogelijkheid niet ondersteunt is de reactie een
    `501 Not Implemented`.
- * In de response van een info-request is er een `"has_hint":true` of
-   `"has_hints":false` om aan te geven of de server deze feature
+ * In de response van een info-request is er een `"server.hints":true`
+   of `"server.hints":false` om aan te geven of de server deze feature
    ondersteunt.
 
 ## Request en reply
@@ -34,7 +35,7 @@ Deze API beschrijft hoe je met json via http kunt communiceren met een
 server die Alpino gebruikt om tekst te parsen. 
 
 Elke verzoek aan de server bestaat uit een json-object. Daarna kan nog
-data volgen als platte tekst.
+data volgen als platte tekst. Alle verzoeken dienen via POST te gaan.
 
 Elk verzoek bevat een element `request` die aangeeft wat de opdracht aan
 de server is. 
@@ -46,8 +47,8 @@ output  | verzoek om (een deel van) de resultaten van een parse terug te sturen
 cancel  | verzoek om een parse te annuleren
 info    | verzoek om informatie over de server
 
-Elk resultaat verstuurd door de server is een json-object,
-met tenminste de elementen `code` en `status`.
+Elk resultaat verstuurd door de server is een json-object, met tenminste
+de elementen `code` en `status`.
 
 element | type
 --------|-------
@@ -82,14 +83,28 @@ code | status                | omschrijving
 
 Doel: zend een tekst naar de server om te laten parsen.
 
-Parameters:
+Parameters, allen optioneel:
 
-element | type   | default | voorwaarde   | omschrijving
---------|--------|---------|--------------|------------------------
-lines   | bool   | `false` |              | true: één zin per regel; false: doorlopenede tekst
-tokens  | bool   | `false` | lines: true  | zinnen zijn getokeniseerd
-labels  | bool   | `false` | lines: true  | zinnen hebben labels
-label   | string | `"doc"` | lines: false | prefix voor labels
+element | type   | default  | voorwaarde   | omschrijving
+--------|--------|----------|--------------|------------------------
+lines   | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
+tokens  | bool   | `false`  | lines: true  | zinnen zijn getokeniseerd
+labels  | bool   | `false`  | lines: true  | zinnen hebben labels
+label   | string | `"doc"`  | lines: false | prefix voor labels
+timeout | int    | `0`      |              | timeout in seconden voor parsen van één zin
+parser  | string | `""`     |              | gebruik alternatiev parser
+
+Wat de timeout betreft:
+
+ * De server kan verschillende timeouts bieden. Als de exacte waarde er
+   niet bij zit, wordt de dichtsbijzijnde gebruikt.
+ * Waarde 0 betekent dat de server zijn default timeout moet gebruiken.
+
+Wat de parser betreft:
+
+ * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
+ * Een onbekende waarde geeft een `501 Not Implemented`.
+ * Waarde "" betekent dat de server de default parser moet gebruiken.
 
 Voorbeeld aanroep, tekst volgt na json-object:
 
@@ -140,7 +155,7 @@ Voorbeeld uitvoer:
 Doel: opvragen van (deel van) de uitvoer van een job, momenteel alleen
 jobs van type `parse`.
 
-Parameters:
+Parameter, verplicht:
 
 element | type   | omschrijving
 --------|--------|-------------
@@ -190,13 +205,91 @@ Voorbeeld uitvoer:
     "batch": [
 {"status":"ok","lineno":2,"label":"doc.1.p.1.s.2","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,je,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"jij\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"je\" persoon=\"2v\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,2v,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"jij\" sense=\"jij\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"jij\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg3,intransitive)\" id=\"3\" infl=\"sg3\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,met-t)\" pt=\"ww\" pvagr=\"met-t\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"bestaat\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">jij bestaat</sentence>\n</alpino_ds>\n","log":""},
 {"status":"ok","lineno":1,"label":"doc.1.p.1.s.1","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,fir,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"ik\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"fir\" persoon=\"1\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,1,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"ik\" sense=\"ik\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"ik\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg1,intransitive)\" id=\"3\" infl=\"sg1\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,ev)\" pt=\"ww\" pvagr=\"ev\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"besta\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">ik besta</sentence>\n</alpino_ds>\n","log":""},
-   ]
+    ]
 }
 ```
 
-
 ### Request: cancel
+
+Doel: een lopende job afbreken.
+
+Jobs worden ook afgebroken als de timeout is verstreken.
+
+Parameter, verplicht:
+
+element | type   | omschrijving
+--------|--------|-------------
+id      | string | id van job
+
+Voorbeeld aanroep:
+
+```json
+{
+    "request": "cancel",
+    "id": "118587257602604880"
+}
+```
+
+Voorbeeld uitvoer:
+
+```json
+{
+    "code": 200,  
+    "status": "OK"
+}
+```
 
 ### Request: info
 
+Doel: details over de huidige status van de server opvragen.
 
+Geen parameters
+
+Voorbeeld aanroep:
+
+```json
+{
+    "request": "info"
+}
+```
+
+element      | type      |           | omschrijving
+-------------|-----------|-----------|------------------
+api          | object    |           | API-versie gebruikt door deze server
+api.major       | int    |           | major version number
+api.minor       | int    |           | minor version number
+server       | object    | optioneel | gegevens over server
+server.about    | string | optioneel | vrije tekst, beschrijving, contact-info, etc.
+server.workers  | int    | optioneel | aantal werkers op dit moment, bezig of wachtend 
+server.jobs     | int    | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
+server.timeout  | int    | optioneel | default timeout in seconden voor parsen van één zin
+server.timeouts | [ int ... ]    | optioneel | ondersteunde timeouts voor parsen van één zin
+server.parsers  | [ string ... ] | optioneel | lijst met alternatieve parsers
+limits       | object    |           | regels voor de gebruiker
+limits.jobs    | int     |           | maximum aantal gelijktijdige jobs per IP-adres
+limits.tokens  | int     |           | maximum lengte van een zin in tokens, 0 is geen limiet
+
+Voorbeeld uitvoer:
+
+```json
+{
+    "code": 200,  
+    "status": "OK"
+    "api": {
+        "major": 0,
+        "minor": 1
+    },
+    "server": {
+        "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",
+        "workers": 10,
+        "jobs": 45,
+		"timeout": 60,
+		"timeouts": [ 20, 60, 180, 600 ],
+		"parsers": [ "qa" ]
+    },
+    "limits": {
+        "jobs": 6,
+		"tokens": 100
+    }
+}
+```
