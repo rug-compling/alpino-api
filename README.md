@@ -12,6 +12,7 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 
  * Voorbeeld-implementatie toevoegen.
  * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
+ * `timeout` en `status` worden in twee betekenissen gebruikt. Hernoemen?
 
 ## Eigenschappen van de server
 
@@ -35,7 +36,8 @@ Deze API beschrijft hoe je met json via http kunt communiceren met een
 server die Alpino gebruikt om tekst te parsen. 
 
 Elke verzoek aan de server bestaat uit een json-object. Daarna kan nog
-data volgen als platte tekst. Alle verzoeken dienen via POST te gaan.
+data volgen als platte tekst. Alle verzoeken dienen met methode POST te
+worden gegaan.
 
 Elk verzoek bevat een element `request` die aangeeft wat de opdracht aan
 de server is. 
@@ -77,6 +79,9 @@ code | status                | omschrijving
 501  | Not Implemented       | er wordt een optie gevraagd die niet is geïmplementeerd
 503  | Service Unavailable   | server is overbelast, probeer later opnieuw
 
+TODO: Moet er in de API een *back-off policy* beschreven worden voor status
+`503`, of is dat aan degene die de API implementeert?
+
 ## Lijst van requests
 
 ### Request: parse
@@ -104,7 +109,7 @@ Wat de parser betreft:
 
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
  * Een onbekende waarde geeft een `501 Not Implemented`.
- * Waarde "" betekent dat de server de default parser moet gebruiken.
+ * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
 Voorbeeld aanroep, tekst volgt na json-object:
 
@@ -179,7 +184,7 @@ status   | string | `OK`
 finished | bool   | `true` als parsen van alle zinnen is voltooid
 batch    | array van items | de zinnen geparst tot nu toe sinds laatste aanroep 
 
-De zinnen in batch hoeven niet aansluiten te zijn, en de volgorde is niet
+De zinnen in batch hoeven niet aansluitend te zijn, en de volgorde is niet
 gedefinieerd.
 
 Wanneer `finished` false is, dan dien je weer binnen de timeout de
@@ -192,7 +197,7 @@ element | type   | voorwaarde | omschrijving
 status  | string |            | `ok` of `fail`
 lineno  | int    |            | zinnummer
 label   | string | indien aanwezig | label van de zin
-xml     | string | status" ok | de parse van de zin
+xml     | string | status: ok | de parse van de zin
 log     | string |            | error-uitvoer van de parser, of van een andere fout
 
 Voorbeeld uitvoer:
@@ -253,28 +258,30 @@ Voorbeeld aanroep:
 }
 ```
 
-element      | type      |           | omschrijving
--------------|-----------|-----------|------------------
-api          | object    |           | API-versie gebruikt door deze server
-api.major       | int    |           | major version number
-api.minor       | int    |           | minor version number
-server       | object    | optioneel | gegevens over server
-server.about    | string | optioneel | vrije tekst, beschrijving, contact-info, etc.
-server.workers  | int    | optioneel | aantal werkers op dit moment, bezig of wachtend 
-server.jobs     | int    | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
-server.timeout  | int    | optioneel | default timeout in seconden voor parsen van één zin
-server.timeouts | [ int ... ]    | optioneel | ondersteunde timeouts voor parsen van één zin
-server.parsers  | [ string ... ] | optioneel | lijst met alternatieve parsers
-limits       | object    |           | regels voor de gebruiker
-limits.jobs    | int     |           | maximum aantal gelijktijdige jobs per IP-adres
-limits.tokens  | int     |           | maximum lengte van een zin in tokens, 0 is geen limiet
+Resultaat:
+
+element  | type     |           | omschrijving
+---------|----------|-----------|------------------
+api      | object   |           | API-versie gebruikt door deze server
+— major    | int    |           | major version number
+— minor    | int    |           | minor version number
+server   | object   | optioneel | gegevens over server
+— about    | string | optioneel | vrije tekst, beschrijving, contact-info, etc.
+— workers  | int    | optioneel | aantal werkers op dit moment, bezig of wachtend 
+— jobs     | int    | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
+— timeout  | int    | optioneel | default timeout in seconden voor parsen van één zin
+— timeouts | [ int ... ]    | optioneel | ondersteunde timeouts voor parsen van één zin
+— parsers  | [ string ... ] | optioneel | lijst met alternatieve parsers
+limits   | object   |           | regels voor de gebruiker
+— jobs     | int    |           | maximum aantal gelijktijdige jobs per IP-adres
+— tokens   | int    |           | maximum lengte van een zin in tokens, 0 is geen limiet
 
 Voorbeeld uitvoer:
 
 ```json
 {
     "code": 200,  
-    "status": "OK"
+    "status": "OK",
     "api": {
         "major": 0,
         "minor": 1
