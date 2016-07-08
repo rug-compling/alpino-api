@@ -101,21 +101,23 @@ timeout   | int    | `0`      |              | timeout in seconden voor parsen v
 parser    | string | `""`     |              | gebruik alternatiev parser
 maxtokens | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
 
-Wat de timeout betreft:
+Wat `timeout` betreft:
 
  * De server kan verschillende timeouts bieden. Als de exacte waarde er
    niet bij zit, wordt de dichtsbijzijnde gebruikt.
  * Waarde 0 betekent dat de server zijn default timeout moet gebruiken.
 
-Wat de parser betreft:
+Wat `parser` betreft:
 
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
  * Een onbekende waarde geeft een `501 Not Implemented`.
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
-Wat maxtokens betreft:
+Wat `maxtokens` betreft:
 
- * De waarde 0 betekent geen limiet
+ * De waarde 0 betekent geen limiet.
+ * Als de waarde groter is dan de limiet die de server heeft ingesteld,
+   dan geldt de limiet van de server.
 
 Voorbeeld aanroep, tekst volgt na json-object:
 
