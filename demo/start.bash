@@ -64,5 +64,5 @@ $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=600000 \
     -init_dict_p \
     batch_command=alpino_server &> alpino23.out &
 
-./alpiserv &> alpiserv.out &
+./alpiserv config.toml &> alpiserv.out &
 

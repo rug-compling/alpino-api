@@ -91,7 +91,7 @@ TODO: Moet er in de API een *back-off policy* beschreven worden voor status
 
 ### Request: parse
 
-Doel: zend een tekst naar de server om te laten parsen.
+Doel: zend een tekst naar de server om te laten parsen, zonodig eerst tokeniseren.
 
 Parameters, allen optioneel:
 
@@ -114,7 +114,7 @@ Wat `timeout` betreft:
 Wat `parser` betreft:
 
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
- * Een onbekende waarde geeft een `501 Not Implemented`.
+ * Een onbekende waarde geeft een `501 Not Implemented`. (Of `400 Bad Request`?)
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
 Wat `maxtokens` betreft:
@@ -186,7 +186,7 @@ element     | type   | default  | voorwaarde   | omschrijving
 `lines`     | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
 `labels`    | bool   | `false`  | lines: true  | zinnen hebben labels
 `label`     | string | `"doc"`  | lines: false | prefix voor labels
-`escape`    | bool   | `false`  |              | speciale tekens escapen
+`escape`    | bool   | `false`  |              | speciale tekens escapen: `[`, `]`, `\[`, `\]`
 
 Voorbeeld aanroep, tekst volgt na json-object:
 

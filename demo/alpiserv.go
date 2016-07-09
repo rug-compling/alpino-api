@@ -42,26 +42,23 @@ type Config struct {
 }
 
 type AlpinoT struct {
-	Server  string
 	Timeout int
 	Parser  string
+	Server  string
 }
 
 type Request struct {
-	Request string
-
-	// Request == "output" || Request == "cancel"
-	Id string
-
-	// Request == "parse"
-	Lines     bool
-	Tokens    bool
-	Labels    bool
-	Label     string
-	Timeout   int
-	Parser    string
-	Maxtokens int
-	Hints     bool
+	Request   string
+	Id        string // output, cancel
+	Lines     bool   // parse, tokenize
+	Tokens    bool   // parse
+	Labels    bool   // parse, tokenize
+	Label     string // parse, tokenize
+	Timeout   int    // parse
+	Parser    string // parse
+	Maxtokens int    // parse
+	Hints     bool   // parse
+	Escape    bool   // tokenize
 }
 
 type Task struct {
@@ -114,10 +111,10 @@ var (
 
 func main() {
 
-	md, err := toml.DecodeFile("config.toml", &cfg)
+	md, err := toml.DecodeFile(os.Args[1], &cfg)
 	util.CheckErr(err)
 	if un := md.Undecoded(); len(un) > 0 {
-		fmt.Fprintln(os.Stderr, "Fout in config.toml: onbekend :", un)
+		fmt.Fprintf(os.Stderr, "Fout in %s: onbekend: %#v", os.Args[1], un)
 		return
 	}
 
