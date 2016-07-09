@@ -14,6 +14,7 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
  * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
  * Sommige elementen (`status`, `tokens`) worden in meerdere
    betekenissen gebruikt. Hernoemen?
+ * Metadata?
 
 ## Eigenschappen van de server
 
@@ -43,15 +44,18 @@ worden gegaan.
 Elk verzoek bevat een element `request` die aangeeft wat de opdracht aan
 de server is.
 
-request   | omschrijving
-----------| ------------
-`parse`   | verzoek om tekst te parsen
-`output`  | verzoek om (een deel van) de resultaten van een parse terug te sturen
-`cancel`  | verzoek om een parse te annuleren
-`info`    | verzoek om informatie over de server
+request    | omschrijving
+-----------| ------------
+`parse`    | verzoek om tekst te parsen, zonodig eerst tokeniseren
+`tokenize` | verzoek om tekst te tokeniseren
+`output`   | verzoek om (een deel van) de resultaten van een parse terug te sturen
+`cancel`   | verzoek om een parse te annuleren
+`info`     | verzoek om informatie over de server
 
-Elk resultaat verstuurd door de server is een json-object, met tenminste
-de elementen `code` en `status`.
+Elk resultaat verstuurd door de server is een json-object, type
+`application/json`, met tenminste de elementen `code` en `status`.
+Uitzondering: de uitvoer van `tokenize` is, als er geen fout is
+opgetreden, platte tekst, type `text/plain`.
 
 element   | type
 ----------|-------
@@ -169,6 +173,39 @@ Voorbeeld uitvoer:
     "lines": 2,
     "timeout": 60
 }
+```
+
+### Request: tokenize
+
+Doel: zend een tekst naar de server om te laten tokeniseren.
+
+Parameters, allen optioneel:
+
+element     | type   | default  | voorwaarde   | omschrijving
+------------|--------|----------|--------------|------------------------
+`lines`     | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
+`labels`    | bool   | `false`  | lines: true  | zinnen hebben labels
+`label`     | string | `"doc"`  | lines: false | prefix voor labels
+`escape`    | bool   | `false`  |              | speciale tekens escapen
+
+Voorbeeld aanroep, tekst volgt na json-object:
+
+```json
+{
+    "request": "tokenize",
+    "lines": false,
+    "label": "demo"
+}
+Ik besta. Jij bestaat.
+```
+
+Bij succes krijg je platte tekst terug.
+
+Voorbeeld uitvoer:
+
+```
+demo.p.1.s.1|Ik besta .
+demo.p.1.s.2|Jij bestaat .
 ```
 
 ### Request: output

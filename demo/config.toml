@@ -1,0 +1,54 @@
+##                                                                                                              
+## Dit bestand is in toml-formaat, zie: https://github.com/mojombo/toml                                         
+##                                                                                                              
+
+about = '''
+Experimentele server, niet voor productiedoeleinden.
+
+Info: https://github.com/rug-compling/alpino-api
+'''
+
+port = 11200
+
+tmp = "/tmp/alpiserv"
+
+interval = 300
+
+workers = 10
+
+timeout_default = 60
+
+timeout_max = 600
+
+timeout_values = [ 20, 60, 600 ]
+
+max_jobs = 6
+
+max_tokens = 100
+
+[[alpino]]
+server = "127.0.0.1:11211"
+timeout = 20
+
+[[alpino]]
+server = "127.0.0.1:11212"
+timeout = 60
+
+[[alpino]]
+server = "127.0.0.1:11213"
+timeout = 600
+
+[[alpino]]
+server = "127.0.0.1:11221"
+timeout = 20
+parser = "qa"
+
+[[alpino]]
+server = "127.0.0.1:11222"
+timeout = 60
+parser = "qa"
+
+[[alpino]]
+server = "127.0.0.1:11223"
+timeout = 600
+parser = "qa"
