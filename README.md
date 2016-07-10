@@ -16,22 +16,6 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
    betekenissen gebruikt. Hernoemen?
  * Metadata?
 
-## Eigenschappen van de server
-
-Afhankelijk van de manier waarop Alpino wordt aangeroepen hebben rechte
-haken in de tekst wel of geen speciale betekenis. Voor deze API geldt
-dat rechte haken **geen** speciale betekenis hebben.
-
-Alternatief voorstel:
-
- * Met een parse-request kan de optie `"hints":true` gebruikt worden om
-   aan te geven dat rechte haken wel een speciale betekenis hebben.
-   Als de server deze mogelijkheid niet ondersteunt is de reactie een
-   `501 Not Implemented`.
- * In de response van een info-request is er een `"server.hints":true`
-   of `"server.hints":false` om aan te geven of de server deze feature
-   ondersteunt.
-
 ## Request en result
 
 Deze API beschrijft hoe je met json via http kunt communiceren met een
@@ -99,12 +83,10 @@ element         | type   | default  | voorwaarde   | omschrijving
 ----------------|--------|----------|--------------|------------------------
 `lines`         | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
 `tokens`        | bool   | `false`  | lines: true  | zinnen zijn getokeniseerd
-`labels`        | bool   | `false`  | lines: true  | zinnen hebben labels
 `label`         | string | `"doc"`  | lines: false | prefix voor labels
 `timeout`       | int    | `0`      |              | timeout in seconden voor parsen van één zin
 `parser`        | string | `""`     |              | gebruik alternatieve parser
 `maxtokens`     | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
-`escaped_input` | bool   | `false`  | tokens: true | speciale tekens zijn ge-escapet: `[`, `]`, `\[`, `\]`
 
 Wat `timeout` betreft:
 
@@ -130,8 +112,7 @@ Voorbeeld aanroep, tekst volgt na json-object:
 {
     "request": "parse",
     "lines": true,
-    "tokens": true,
-    "labels": true
+    "tokens": true
 }
 doc.1.p.1.s.1|Ik besta .
 doc.1.p.1.s.2|Jij bestaat .
@@ -185,9 +166,7 @@ Parameters, allen optioneel:
 element          | type   | default  | voorwaarde   | omschrijving
 -----------------|--------|----------|--------------|------------------------
 `lines`          | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
-`labels`         | bool   | `false`  | lines: true  | zinnen hebben labels
 `label`          | string | `"doc"`  | lines: false | prefix voor labels
-`escaped_output` | bool   | `false`  |              | speciale tekens escapen: `[`, `]`, `\[`, `\]`
 
 Voorbeeld aanroep, tekst volgt na json-object:
 

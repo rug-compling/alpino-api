@@ -17,7 +17,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -52,18 +51,14 @@ type AlpinoT struct {
 }
 
 type Request struct {
-	Request        string
-	Id             string // output, cancel
-	Lines          bool   // parse, tokenize
-	Tokens         bool   // parse
-	Labels         bool   // parse, tokenize
-	Label          string // parse, tokenize
-	Timeout        int    // parse
-	Parser         string // parse
-	Maxtokens      int    // parse
-	Hints          bool   // parse
-	Escaped_input  bool   // parse
-	Escaped_output bool   // tokenize
+	Request   string
+	Id        string // output, cancel
+	Lines     bool   // parse, tokenize
+	Tokens    bool   // parse
+	Label     string // parse, tokenize
+	Timeout   int    // parse
+	Parser    string // parse
+	Maxtokens int    // parse
 }
 
 type Task struct {
@@ -101,9 +96,6 @@ var (
 
 	servers = make(map[int]map[string]string) // timeout > parser > server
 	parsers = make([]string, 0)
-
-	// matcht een losse '|' overal en een '%' aan het begin
-	rePipe = regexp.MustCompile(`((^| )\|( |$)|^%)`)
 
 	status = map[int]string{
 		200: "OK",
@@ -276,43 +268,91 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
-	pr, pw := io.Pipe()
-	defer pr.Close()
+func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, error) {
 
-	go func() {
-		for _, rd := range rds {
-			io.Copy(pw, rd)
+	//
+	// flow: readers -> [plakken] -> source -> [tokeniseren] -> tokenizer -> [nabewerking] -> writer
+	//
+
+	// dit plakt de inhoud van 'readers' aan elkaar en stuurt het naar 'source'
+	source, pw := io.Pipe()
+	defer source.Close()
+	go func(writer io.WriteCloser) {
+		for _, reader := range readers {
+			io.Copy(writer, reader)
 		}
-		pw.Close()
-	}()
+		writer.Close()
+	}(pw)
 
-	var tokerr1, tokerr2, tokerr3 error
-	var fp io.ReadCloser
+	//
+	// leest van 'source', tokeniseert, en koppelt resultaat aan 'tokenizer'
+	//
+
+	var tokenizer io.ReadCloser
+
+	var chErrWait chan bool
 	var cmd *exec.Cmd
-	chWait := make(chan bool)
+	var tokerr1, tokerr2, tokerr3 error
+
 	if req.Lines && req.Tokens {
-		fp = pr
+
+		//
+		// tekst is al getokeniseerd
+		//
+
+		tokenizer = source // direct van 'source' naar 'tokenizer'
+
 	} else {
-		req.Escaped_input = true
-		if req.Label == "" {
-			req.Label = "doc"
-		}
+
+		// lines: false OR tokens: false
+
+		//
+		// er moet getokeniseerd worden
+		//
+
+		// kies externe tokenizer voor de shell
 		if req.Lines {
 			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/tokenize_no_breaks.sh")
 		} else {
+			if req.Label == "" {
+				req.Label = "doc"
+			}
 			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -t '"+shellEscape(req.Label)+".p.%p.s.%l|'")
 		}
-		if req.Lines && req.Labels {
-			// tokenizer input
+
+		// setup van stdin en stdout voor de shell
+		if !req.Lines {
+			// lines: false
+
+			//
+			// doorlopende tekst -> partok, zorgt zelf voor labels
+			//
+
+			// shell partok input
+			cmd.Stdin = source
+
+			// shell partok output
+			var err error
+			tokenizer, err = cmd.StdoutPipe()
+			if err != nil {
+				return 0, err
+			}
+			defer tokenizer.Close()
+		} else { // if !req.Lines
+			// lines: true AND tokens: false
+
+			//
+			// een zin per regel -> tokenize_no_breaks.sh, kan niet met labels omgaan
+			//
+
+			// shell tokenize_no_breaks.sh input: labels van zinnen afsplitsen
 			fpin, err := cmd.StdinPipe()
 			if err != nil {
-				close(chWait)
 				return 0, err
 			}
 			go func() {
 				defer fpin.Close()
-				reader := util.NewReader(pr)
+				reader := util.NewReader(source)
 				for {
 					line, err := reader.ReadLineString()
 					if err == io.EOF {
@@ -323,6 +363,10 @@ func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
 						tokerr1 = err
 						break
 					}
+					if strings.HasPrefix(line, "%") {
+						// volgens specificatie van Alpino is dit een commentaarregel
+						continue
+					}
 					a := strings.SplitN(line, "|", 2)
 					if len(a) == 2 {
 						fmt.Fprintln(fpin, "##LABEL##", hex.EncodeToString([]byte(a[0])))
@@ -332,19 +376,20 @@ func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
 					}
 				}
 			}()
-			// tokenizer output
-			var ffp *io.PipeWriter
-			fp, ffp = io.Pipe()
-			fpout, err := cmd.StdoutPipe()
+
+			// shell tokenize_no_breaks.sh output: labels en zinnen aan elkaar plakken
+			var writer io.WriteCloser
+			tokenizer, writer = io.Pipe()
+			defer tokenizer.Close()
+			pipe, err := cmd.StdoutPipe()
 			if err != nil {
-				close(chWait)
 				return 0, err
 			}
 			go func() {
-				defer fpout.Close()
-				defer ffp.Close()
+				defer pipe.Close()
+				defer writer.Close()
 				var lbl string
-				reader := util.NewReader(fpout)
+				reader := util.NewReader(pipe)
 				for {
 					line, err := reader.ReadLineString()
 					if err == io.EOF {
@@ -364,31 +409,26 @@ func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
 						}
 						lbl = string(b)
 					} else {
-						fmt.Fprintln(ffp, lbl+"|"+line)
+						fmt.Fprintln(writer, lbl+"|"+line)
 						lbl = ""
 					}
 				}
 			}()
-		} else {
-			// tokenizer input
-			cmd.Stdin = pr
-			// tokenizer output
-			var err error
-			fp, err = cmd.StdoutPipe()
-			if err != nil {
-				close(chWait)
-				return 0, err
-			}
-		}
-		defer fp.Close()
-		fperr, err := cmd.StderrPipe()
+		} // if !req.Lines else
+		// klaar met setup van stdin en stdout voor de shell
+
+		// setup stderr voor de shell
+		pipe, err := cmd.StderrPipe()
 		if err != nil {
-			close(chWait)
 			return 0, err
 		}
+		// channel dat gesloten wordt als fouten van de shell verwerkt zijn
+		chErrWait = make(chan bool)
 		go func() {
+			defer close(chErrWait)
+			defer pipe.Close()
 			errlines := make([]string, 0)
-			reader := util.NewReader(fperr)
+			reader := util.NewReader(pipe)
 			for {
 				line, err := reader.ReadLineString()
 				if err == io.EOF {
@@ -402,20 +442,24 @@ func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
 				errlines = append(errlines, line)
 				chLog <- fmt.Sprintf("tokenize: %v", line)
 			}
-			fperr.Close()
 			if len(errlines) > 0 {
 				tokerr3 = fmt.Errorf("tokenize: " + strings.Join(errlines, " -- "))
 			}
-			close(chWait)
 		}()
+
+		// start de shell
 		err = cmd.Start()
 		if err != nil {
 			return 0, err
 		}
-	}
+	} // if req.Lines && req.Tokens else
+
+	//
+	// lees van 'tokenizer', zet regels in juiste vorm, en schrijf naar 'writer'
+	//
 
 	var lineno uint64
-	reader := util.NewReader(fp)
+	reader := util.NewReader(tokenizer)
 	for {
 		line, err := reader.ReadLineString()
 		if err == io.EOF {
@@ -425,53 +469,28 @@ func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
 			return 0, err
 		}
 		line = strings.TrimSpace(line)
+		var lbl string
+		a := strings.SplitN(line, "|", 2)
+		if len(a) == 2 {
+			lbl = strings.TrimSpace(a[0])
+			line = strings.TrimSpace(a[1])
+		}
 		if line == "" {
 			continue
 		}
-		var lbl string
-		if req.Lines == false || req.Labels {
-			a := strings.SplitN(line, "|", 2)
-			if len(a) == 2 {
-				lbl = strings.TrimSpace(a[0])
-				line = strings.TrimSpace(a[1])
-			}
-		}
-		if req.Escaped_output != req.Escaped_input {
-			words := strings.Fields(line)
-			for i, word := range words {
-				if req.Escaped_output {
-					switch word {
-					case `[`:
-						words[i] = `\[`
-					case `]`:
-						words[i] = `\]`
-					case `\[`:
-						words[i] = `\\[`
-					case `\]`:
-						words[i] = `\\]`
-
-					}
-				} else {
-					switch word {
-					case `\[`:
-						words[i] = `[`
-					case `\]`:
-						words[i] = `]`
-					case `\\[`:
-						words[i] = `\[`
-					case `\\]`:
-						words[i] = `\]`
-					}
-				}
-			}
-			line = strings.Join(words, " ")
-		}
 		lineno++
-		fmt.Fprintf(w, "%s\t%s\n", lbl, line)
+		fmt.Fprintf(writer, "%s\t%s\n", lbl, line)
 	}
+
+	//
+	// fouten van shell en goroutines afhandelen
+	//
+
 	if cmd != nil {
 		err := cmd.Wait()
-		<-chWait
+		if chErrWait != nil {
+			<-chErrWait
+		}
 		if tokerr1 != nil {
 			return 0, tokerr1
 		}
@@ -485,6 +504,11 @@ func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
 			return 0, err
 		}
 	}
+
+	//
+	// klaar: return aantal regels van de uitvoer
+	//
+
 	return lineno, nil
 }
 
@@ -497,7 +521,6 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 
 	var tokerr error
 	go func() {
-		req.Escaped_input = false
 		_, tokerr = tokenize(pw, req, rds...)
 		pw.Close()
 		close(chWait)
@@ -523,11 +546,11 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		}
 		started = true
 		a := strings.SplitN(line, "\t", 2)
-		if req.Lines == false || (req.Lines == true && req.Labels == true) {
+		if a[0] != "" {
 			fmt.Fprintln(w, a[0]+"|"+a[1])
 		} else {
-			if req.Escaped_output && rePipe.MatchString(a[1]) {
-				fmt.Fprint(w, "|")
+			if strings.Contains(a[1], "|") {
+				fmt.Fprint(w, "|") // hierdoor verliezen andere '|'-tekens hun speciale betekenis
 			}
 			fmt.Fprintln(w, a[1])
 		}
@@ -586,7 +609,6 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		return
 	}
 
-	req.Escaped_output = false
 	lineno, err := tokenize(fp, req, rds...)
 	fp.Close()
 
