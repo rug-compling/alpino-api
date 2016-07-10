@@ -8,11 +8,6 @@ fi
 
 export PROLOGMAXSIZE=800M
 
-killall -u "$USER" Alpino.bin alpiserv
-sleep 2
-killall -KILL -u "$USER" Alpino.bin alpiserv
-sleep 2
-
 $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=20000 \
     server_kind=parse \
     server_port=11211 \
@@ -63,6 +58,12 @@ $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=600000 \
     debug=1 \
     -init_dict_p \
     batch_command=alpino_server &> alpino23.out &
+
+sleep 2
+for i in 11211 11212 11213 11221 11222 11223
+do
+    echo hallo $i | nc localhost $i | grep sentence
+done
 
 if [ "$1" = "-i" ]
 then
