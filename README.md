@@ -95,15 +95,16 @@ Doel: zend een tekst naar de server om te laten parsen, zonodig eerst tokenisere
 
 Parameters, allen optioneel:
 
-element     | type   | default  | voorwaarde   | omschrijving
-------------|--------|----------|--------------|------------------------
-`lines`     | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
-`tokens`    | bool   | `false`  | lines: true  | zinnen zijn getokeniseerd
-`labels`    | bool   | `false`  | lines: true  | zinnen hebben labels
-`label`     | string | `"doc"`  | lines: false | prefix voor labels
-`timeout`   | int    | `0`      |              | timeout in seconden voor parsen van één zin
-`parser`    | string | `""`     |              | gebruik alternatieve parser
-`maxtokens` | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
+element         | type   | default  | voorwaarde   | omschrijving
+----------------|--------|----------|--------------|------------------------
+`lines`         | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
+`tokens`        | bool   | `false`  | lines: true  | zinnen zijn getokeniseerd
+`labels`        | bool   | `false`  | lines: true  | zinnen hebben labels
+`label`         | string | `"doc"`  | lines: false | prefix voor labels
+`timeout`       | int    | `0`      |              | timeout in seconden voor parsen van één zin
+`parser`        | string | `""`     |              | gebruik alternatieve parser
+`maxtokens`     | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
+`escaped_input` | bool   | `false`  | tokens: true | speciale tekens zijn ge-escapet: `[`, `]`, `\[`, `\]`
 
 Wat `timeout` betreft:
 
@@ -181,12 +182,12 @@ Doel: zend een tekst naar de server om te laten tokeniseren.
 
 Parameters, allen optioneel:
 
-element     | type   | default  | voorwaarde   | omschrijving
-------------|--------|----------|--------------|------------------------
-`lines`     | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
-`labels`    | bool   | `false`  | lines: true  | zinnen hebben labels
-`label`     | string | `"doc"`  | lines: false | prefix voor labels
-`escape`    | bool   | `false`  |              | speciale tekens escapen: `[`, `]`, `\[`, `\]`
+element          | type   | default  | voorwaarde   | omschrijving
+-----------------|--------|----------|--------------|------------------------
+`lines`          | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
+`labels`         | bool   | `false`  | lines: true  | zinnen hebben labels
+`label`          | string | `"doc"`  | lines: false | prefix voor labels
+`escaped_output` | bool   | `false`  |              | speciale tekens escapen: `[`, `]`, `\[`, `\]`
 
 Voorbeeld aanroep, tekst volgt na json-object:
 

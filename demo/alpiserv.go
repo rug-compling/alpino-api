@@ -4,7 +4,9 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pebbe/util"
 
+	"encoding/hex"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -48,17 +51,18 @@ type AlpinoT struct {
 }
 
 type Request struct {
-	Request   string
-	Id        string // output, cancel
-	Lines     bool   // parse, tokenize
-	Tokens    bool   // parse
-	Labels    bool   // parse, tokenize
-	Label     string // parse, tokenize
-	Timeout   int    // parse
-	Parser    string // parse
-	Maxtokens int    // parse
-	Hints     bool   // parse
-	Escape    bool   // tokenize
+	Request        string
+	Id             string // output, cancel
+	Lines          bool   // parse, tokenize
+	Tokens         bool   // parse
+	Labels         bool   // parse, tokenize
+	Label          string // parse, tokenize
+	Timeout        int    // parse
+	Parser         string // parse
+	Maxtokens      int    // parse
+	Hints          bool   // parse
+	Escaped_input  bool   // parse
+	Escaped_output bool   // tokenize
 }
 
 type Task struct {
@@ -86,7 +90,7 @@ var (
 	jobs   = make(map[int64]*Job)
 	queue  = make(chan Task)
 
-	verbose bool
+	verbose = flag.Bool("v", false, "verbose")
 	started = time.Now()
 	chLog   = make(chan string)
 	//wg           sync.WaitGroup
@@ -111,10 +115,12 @@ var (
 
 func main() {
 
-	md, err := toml.DecodeFile(os.Args[1], &cfg)
+	flag.Parse()
+
+	md, err := toml.DecodeFile(flag.Arg(0), &cfg)
 	util.CheckErr(err)
 	if un := md.Undecoded(); len(un) > 0 {
-		fmt.Fprintf(os.Stderr, "Fout in %s: onbekend: %#v", os.Args[1], un)
+		fmt.Fprintf(os.Stderr, "Fout in %s: onbekend: %#v", flag.Arg(0), un)
 		return
 	}
 
@@ -130,10 +136,6 @@ func main() {
 			}
 			seen[a.Parser] = true
 		}
-	}
-
-	if len(os.Args) > 1 && os.Args[1] == "-v" {
-		verbose = true
 	}
 
 	util.CheckErr(os.RemoveAll(cfg.Tmp))
@@ -270,22 +272,276 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func tokenize(w io.Writer, req Request, rds ...io.Reader) (uint64, error) {
+	pr, pw := io.Pipe()
+	defer pr.Close()
+
+	go func() {
+		for _, rd := range rds {
+			io.Copy(pw, rd)
+		}
+		pw.Close()
+	}()
+
+	var tokerr1, tokerr2, tokerr3 error
+	var fp io.ReadCloser
+	var cmd *exec.Cmd
+	chWait := make(chan bool)
+	if req.Lines && req.Tokens {
+		fp = pr
+	} else {
+		req.Escaped_input = true
+		if req.Label == "" {
+			req.Label = "doc"
+		}
+		if req.Lines {
+			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/tokenize_no_breaks.sh")
+		} else {
+			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -t '"+shellEscape(req.Label)+".p.%p.s.%l|'")
+		}
+		if req.Lines && req.Labels {
+			// tokenizer input
+			fpin, err := cmd.StdinPipe()
+			if err != nil {
+				close(chWait)
+				return 0, err
+			}
+			go func() {
+				defer fpin.Close()
+				reader := util.NewReader(pr)
+				for {
+					line, err := reader.ReadLineString()
+					if err == io.EOF {
+						break
+					}
+					if err != nil {
+						chLog <- fmt.Sprintf("tokenize: %v", err)
+						tokerr1 = err
+						break
+					}
+					a := strings.SplitN(line, "|", 2)
+					if len(a) == 2 {
+						fmt.Fprintln(fpin, "##LABEL##", hex.EncodeToString([]byte(a[0])))
+						fmt.Fprintln(fpin, a[1])
+					} else {
+						fmt.Fprintln(fpin, line)
+					}
+				}
+			}()
+			// tokenizer output
+			var ffp *io.PipeWriter
+			fp, ffp = io.Pipe()
+			fpout, err := cmd.StdoutPipe()
+			if err != nil {
+				close(chWait)
+				return 0, err
+			}
+			go func() {
+				defer fpout.Close()
+				defer ffp.Close()
+				var lbl string
+				reader := util.NewReader(fpout)
+				for {
+					line, err := reader.ReadLineString()
+					if err == io.EOF {
+						break
+					}
+					if err != nil {
+						chLog <- fmt.Sprintf("tokenize: %v", err)
+						tokerr2 = err
+						break
+					}
+					if strings.HasPrefix(line, "##LABEL##") {
+						b, err := hex.DecodeString(strings.TrimSpace(line[9:]))
+						if err != nil {
+							chLog <- fmt.Sprintf("tokenize: %v", err)
+							tokerr2 = err
+							break
+						}
+						lbl = string(b)
+					} else {
+						fmt.Fprintln(ffp, lbl+"|"+line)
+						lbl = ""
+					}
+				}
+			}()
+		} else {
+			// tokenizer input
+			cmd.Stdin = pr
+			// tokenizer output
+			var err error
+			fp, err = cmd.StdoutPipe()
+			if err != nil {
+				close(chWait)
+				return 0, err
+			}
+		}
+		defer fp.Close()
+		fperr, err := cmd.StderrPipe()
+		if err != nil {
+			close(chWait)
+			return 0, err
+		}
+		go func() {
+			errlines := make([]string, 0)
+			reader := util.NewReader(fperr)
+			for {
+				line, err := reader.ReadLineString()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					errlines = append(errlines, err.Error())
+					chLog <- fmt.Sprintf("tokenize: %v", err)
+					break
+				}
+				errlines = append(errlines, line)
+				chLog <- fmt.Sprintf("tokenize: %v", line)
+			}
+			fperr.Close()
+			if len(errlines) > 0 {
+				tokerr3 = fmt.Errorf("tokenize: " + strings.Join(errlines, " -- "))
+			}
+			close(chWait)
+		}()
+		err = cmd.Start()
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	var lineno uint64
+	reader := util.NewReader(fp)
+	for {
+		line, err := reader.ReadLineString()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, err
+		}
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var lbl string
+		if req.Lines == false || req.Labels {
+			a := strings.SplitN(line, "|", 2)
+			if len(a) == 2 {
+				lbl = strings.TrimSpace(a[0])
+				line = strings.TrimSpace(a[1])
+			}
+		}
+		if req.Escaped_output != req.Escaped_input {
+			words := strings.Fields(line)
+			for i, word := range words {
+				if req.Escaped_output {
+					switch word {
+					case `[`:
+						words[i] = `\[`
+					case `]`:
+						words[i] = `\]`
+					case `\[`:
+						words[i] = `\\[`
+					case `\]`:
+						words[i] = `\\]`
+
+					}
+				} else {
+					switch word {
+					case `\[`:
+						words[i] = `[`
+					case `\]`:
+						words[i] = `]`
+					case `\\[`:
+						words[i] = `\[`
+					case `\\]`:
+						words[i] = `\]`
+					}
+				}
+			}
+			line = strings.Join(words, " ")
+		}
+		lineno++
+		fmt.Fprintf(w, "%s\t%s\n", lbl, line)
+	}
+	if cmd != nil {
+		err := cmd.Wait()
+		<-chWait
+		if tokerr1 != nil {
+			return 0, tokerr1
+		}
+		if tokerr2 != nil {
+			return 0, tokerr2
+		}
+		if tokerr3 != nil {
+			return 0, tokerr3
+		}
+		if err != nil {
+			return 0, err
+		}
+	}
+	return lineno, nil
+}
+
 func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
-	x(w, fmt.Errorf("Not implemented: request=tokenize"), 501)
+
+	pr, pw := io.Pipe()
+	defer pr.Close()
+
+	chWait := make(chan bool)
+
+	var tokerr error
+	go func() {
+		req.Escaped_input = false
+		_, tokerr = tokenize(pw, req, rds...)
+		pw.Close()
+		close(chWait)
+	}()
+
+	started := false
+	reader := util.NewReader(pr)
+	for {
+		line, err := reader.ReadLineString()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			if started {
+				fmt.Fprintf(w, "<<<ERROR>>> %v", err)
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Cache-Control", "no-cache")
+				w.Header().Add("Pragma", "no-cache")
+				x(w, err, 500)
+			}
+			break
+		}
+		started = true
+		a := strings.SplitN(line, "\t", 2)
+		if req.Lines == false || (req.Lines == true && req.Labels == true) {
+			fmt.Fprintln(w, a[0]+"|"+a[1])
+		} else {
+			fmt.Fprintln(w, a[1])
+		}
+	}
+
+	<-chWait
+	if tokerr != nil {
+		if started {
+			fmt.Fprintf(w, "<<<ERROR>>> %v", tokerr)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Add("Pragma", "no-cache")
+			x(w, tokerr, 500)
+		}
+	}
 }
 
 func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	if req.Label == "" {
 		req.Label = "doc"
-	}
-
-	if req.Lines != true {
-		x(w, fmt.Errorf("Not supported: lines=false"), 501)
-		return
-	}
-	if req.Tokens != true {
-		x(w, fmt.Errorf("Not supported: tokens=false"), 501)
-		return
 	}
 
 	timeout := cfg.Timeout_default
@@ -323,42 +579,14 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		return
 	}
 
-	pr, pw := io.Pipe()
-	go func() {
-		for _, rd := range rds {
-			io.Copy(pw, rd)
-		}
-		pw.Close()
-	}()
-
-	var lineno uint64
-	reader := util.NewReader(pr)
-	for {
-		line, err := reader.ReadLineString()
-		if err == io.EOF {
-			break
-		}
-		if x(w, err, 500) {
-			fp.Close()
-			os.RemoveAll(dir)
-			return
-		}
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		var lbl string
-		if req.Labels {
-			a := strings.SplitN(line, "|", 2)
-			if len(a) == 2 {
-				lbl = strings.TrimSpace(a[0])
-				line = strings.TrimSpace(a[1])
-			}
-		}
-		lineno++
-		fmt.Fprintf(fp, "%s\t%s\n", lbl, line)
-	}
+	req.Escaped_output = false
+	lineno, err := tokenize(fp, req, rds...)
 	fp.Close()
+
+	if x(w, err, 500) {
+		os.RemoveAll(dir)
+		return
+	}
 
 	if lineno == 0 {
 		os.RemoveAll(dir)
@@ -750,7 +978,7 @@ func logger() {
 			s := fmt.Sprintf("%04d-%02d-%02d %d:%02d:%02d %s", now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second(), msg)
 			fmt.Fprintln(fp, s)
 			fp.Sync()
-			if verbose {
+			if *verbose {
 				fmt.Println(s)
 			}
 			n++
@@ -776,4 +1004,8 @@ func abs(i int) int {
 		return -i
 	}
 	return i
+}
+
+func shellEscape(s string) string {
+	return strings.Replace(s, `'`, `'\''`, -1)
 }
