@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -100,6 +101,9 @@ var (
 
 	servers = make(map[int]map[string]string) // timeout > parser > server
 	parsers = make([]string, 0)
+
+	// matcht een losse '|' overal en een '%' aan het begin
+	rePipe = regexp.MustCompile(`((^| )\|( |$)|^%)`)
 
 	status = map[int]string{
 		200: "OK",
@@ -522,6 +526,9 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		if req.Lines == false || (req.Lines == true && req.Labels == true) {
 			fmt.Fprintln(w, a[0]+"|"+a[1])
 		} else {
+			if req.Escaped_output && rePipe.MatchString(a[1]) {
+				fmt.Fprint(w, "|")
+			}
 			fmt.Fprintln(w, a[1])
 		}
 	}
