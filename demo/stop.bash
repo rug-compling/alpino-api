@@ -1,5 +1,9 @@
 #!/bin/bash
 
-killall -v -u "$USER" Alpino.bin alpiserv sicstus
+E='alpiserv|server_port=112(11|12|13|21|22|23)'
+
+pkill -f -u $USER $E
+
 sleep 2
-killall -KILL -v -u "$USER" Alpino.bin alpiserv sicstus
+
+pkill -KILL -f -u $USER $E

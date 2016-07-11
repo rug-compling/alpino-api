@@ -79,4 +79,5 @@ then
     ./alpiserv -v config.toml
 else
     ./alpiserv config.toml &> log/alpiserv.out &
+    ps -p `pgrep -f -u $USER 'alpiserv|server_port=112(11|12|13|21|22|23)'`
 fi
