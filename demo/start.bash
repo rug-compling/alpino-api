@@ -8,58 +8,67 @@ fi
 
 export PROLOGMAXSIZE=800M
 
+DEBUG=1
+
+if [ $DEBUG = 0 ]
+then
+    NULL=/dev/null
+fi
+
+mkdir -p log
+
 $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=20000 \
     server_kind=parse \
     server_port=11211 \
     assume_input_is_tokenized=on \
-    debug=1 \
+    debug=$DEBUG \
     -init_dict_p \
-    batch_command=alpino_server &> alpino11.out &
+    batch_command=alpino_server &> ${NULL:-log/alpino11.out} &
 
 $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=60000 \
     server_kind=parse \
     server_port=11212 \
     assume_input_is_tokenized=on \
-    debug=1 \
+    debug=$DEBUG \
     -init_dict_p \
-    batch_command=alpino_server &> alpino12.out &
+    batch_command=alpino_server &> ${NULL:-log/alpino12.out} &
 
 $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=600000 \
     server_kind=parse \
     server_port=11213 \
     assume_input_is_tokenized=on \
-    debug=1 \
+    debug=$DEBUG \
     -init_dict_p \
-    batch_command=alpino_server &> alpino13.out &
+    batch_command=alpino_server &> ${NULL:-log/alpino13.out} &
 
 $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=20000 \
     application_type=qa \
     server_kind=parse \
     server_port=11221 \
     assume_input_is_tokenized=on \
-    debug=1 \
+    debug=$DEBUG \
     -init_dict_p \
-    batch_command=alpino_server &> alpino21.out &
+    batch_command=alpino_server &> ${NULL:-log/alpino21.out} &
 
 $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=60000 \
     application_type=qa \
     server_kind=parse \
     server_port=11222 \
     assume_input_is_tokenized=on \
-    debug=1 \
+    debug=$DEBUG \
     -init_dict_p \
-    batch_command=alpino_server &> alpino22.out &
+    batch_command=alpino_server &> ${NULL:-log/alpino22.out} &
 
 $ALPINO_HOME/bin/Alpino -notk -veryfast user_max=600000 \
     application_type=qa \
     server_kind=parse \
     server_port=11223 \
     assume_input_is_tokenized=on \
-    debug=1 \
+    debug=$DEBUG \
     -init_dict_p \
-    batch_command=alpino_server &> alpino23.out &
+    batch_command=alpino_server &> ${NULL:-log/alpino23.out} &
 
-sleep 2
+sleep 10
 for i in 11211 11212 11213 11221 11222 11223
 do
     echo hallo $i | nc localhost $i | grep sentence
@@ -69,5 +78,5 @@ if [ "$1" = "-i" ]
 then
     ./alpiserv -v config.toml
 else
-    ./alpiserv config.toml &> alpiserv.out &
+    ./alpiserv config.toml &> log/alpiserv.out &
 fi

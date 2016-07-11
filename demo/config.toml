@@ -2,6 +2,8 @@
 ## Dit bestand is in toml-formaat, zie: https://github.com/mojombo/toml                                         
 ##                                                                                                              
 
+logfile = "log/alpiserv.log"
+
 about = '''
 Experimentele server, niet voor productiedoeleinden.
 

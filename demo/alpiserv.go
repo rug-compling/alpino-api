@@ -31,6 +31,7 @@ const (
 )
 
 type Config struct {
+	Logfile         string
 	About           string
 	Port            int
 	Tmp             string
@@ -984,7 +985,7 @@ func x(w http.ResponseWriter, err error, code int) bool {
 
 func logger() {
 
-	logfile := "alpiserv.log"
+	logfile := cfg.Logfile
 
 	rotate := func() {
 		for i := 4; i > 1; i-- {
