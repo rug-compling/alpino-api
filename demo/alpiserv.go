@@ -625,9 +625,9 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		return
 	}
 
-	maxtokens := req.Maxtokens
-	if maxtokens > cfg.Max_tokens && cfg.Max_tokens > 0 {
-		maxtokens = cfg.Max_tokens
+	maxtokens := max(req.Maxtokens, cfg.Max_tokens)
+	if req.Maxtokens > 0 && cfg.Max_tokens > 0 {
+		maxtokens = min(req.Maxtokens, cfg.Max_tokens)
 	}
 	go doJob(jobID, lineno, server, maxtokens)
 
@@ -1068,4 +1068,24 @@ func abs(i int) int {
 
 func shellEscape(s string) string {
 	return strings.Replace(s, `'`, `'\''`, -1)
+}
+
+func max(a ...int) int {
+	b := a[0]
+	for _, i := range a[1:] {
+		if i > b {
+			b = i
+		}
+	}
+	return b
+}
+
+func min(a ...int) int {
+	b := a[0]
+	for _, i := range a[1:] {
+		if i < b {
+			b = i
+		}
+	}
+	return b
 }
