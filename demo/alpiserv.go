@@ -63,10 +63,11 @@ type Request struct {
 }
 
 type Task struct {
-	line   string
-	label  string
-	lineno uint64
-	job    *Job
+	line      string
+	label     string
+	lineno    uint64
+	maxtokens int
+	job       *Job
 }
 
 type Job struct {
@@ -239,7 +240,7 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != "POST" {
 		logRequest(r)
-		x(w, fmt.Errorf("Requires method POST", r.Method), 405)
+		x(w, fmt.Errorf("Method %s is not supported. Method POST required.", r.Method), 405)
 		return
 	}
 	defer r.Body.Close()
@@ -624,7 +625,11 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		return
 	}
 
-	go doJob(jobID, lineno, server)
+	maxtokens := req.Maxtokens
+	if maxtokens > cfg.Max_tokens && cfg.Max_tokens > 0 {
+		maxtokens = cfg.Max_tokens
+	}
+	go doJob(jobID, lineno, server, maxtokens)
 
 	fmt.Fprintf(w, `{
     "code": 202,
@@ -637,7 +642,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 `, status[202], jobID, cfg.Interval, lineno, timeout)
 }
 
-func doJob(jobID int64, nlines uint64, server string) {
+func doJob(jobID int64, nlines uint64, server string, maxtokens int) {
 	chLog <- fmt.Sprintf("New job %d, %d lines", jobID, nlines)
 
 	j := Job{
@@ -681,10 +686,11 @@ func doJob(jobID int64, nlines uint64, server string) {
 			a := strings.SplitN(line, "\t", 2)
 			lineno++
 			queue <- Task{
-				line:   a[1],
-				label:  a[0],
-				lineno: lineno,
-				job:    &j,
+				line:      a[1],
+				label:     a[0],
+				lineno:    lineno,
+				job:       &j,
+				maxtokens: maxtokens,
 			}
 
 			select {
@@ -900,6 +906,24 @@ WORKER:
 			continue WORKER
 		}
 		job.mu.Unlock()
+
+		if task.maxtokens > 0 {
+			if n := len(strings.Fields(task.line)); n > task.maxtokens {
+				job.mu.Lock()
+				fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
+				if err == nil {
+					fmt.Fprintf(fp, `{"status":"skipped","lineno":%d,`, task.lineno)
+					if task.label != "" {
+						fmt.Fprintf(fp, `"label":%q,`, task.label)
+					}
+					fmt.Fprintf(fp, `"sentence":%q,"log":"line too long: %d tokens"}`, task.line, n)
+					err = fp.Close()
+				}
+				job.count--
+				job.mu.Unlock()
+				continue
+			}
+		}
 
 		var log, xml string
 		status := "ok"

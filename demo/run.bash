@@ -26,7 +26,7 @@ if [ $RESTART = 0 ]
 then
     exit
 fi
-    
+
 cd `dirname $0`
 
 ln -s lock.$$ lock

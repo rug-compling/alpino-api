@@ -8,7 +8,7 @@ fi
 
 export PROLOGMAXSIZE=800M
 
-DEBUG=1
+DEBUG=0
 
 if [ $DEBUG = 0 ]
 then
