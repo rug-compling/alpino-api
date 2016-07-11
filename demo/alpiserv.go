@@ -625,9 +625,11 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		return
 	}
 
-	maxtokens := max(req.Maxtokens, cfg.Max_tokens)
+	var maxtokens int
 	if req.Maxtokens > 0 && cfg.Max_tokens > 0 {
 		maxtokens = min(req.Maxtokens, cfg.Max_tokens)
+	} else {
+		maxtokens = max(req.Maxtokens, cfg.Max_tokens)
 	}
 	go doJob(jobID, lineno, server, maxtokens)
 
