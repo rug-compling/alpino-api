@@ -931,6 +931,12 @@ WORKER:
 			continue WORKER
 		}
 
+		if x := strings.TrimSpace(xml); !strings.HasSuffix(x, "</alpino_ds>") {
+			status = "fail"
+			log = xml
+			xml = ""
+		}
+
 		select {
 		case <-job.cancelled:
 		default:
