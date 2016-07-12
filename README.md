@@ -110,11 +110,23 @@ element         | type   | default  | voorwaarde   | omschrijving
 `parser`        | string | `""`     |              | gebruik alternatieve parser
 `maxtokens`     | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
 
-Wat `escape` betreft:
+#### Wat `lines` betreft:
+
+ * Als een regel een `|` bevat dan wordt dat geïnterpreteerd als
+   scheidingsteken tussen label en zin.
+ * Een regel zonder label die met een `%` begint, wordt beschouwd als
+   commentaarregel, en genegeerd. Een label kan niet met `%` beginnen.
+
+In beide gevallen kun je een `|` aan het begin van de regel toevoegen om
+de speciale interpretatie van verdere `|` en `%` te voorkomen.
+
+#### Wat `escape` betreft:
 
 Alleen van toepassing op invoer die al bestaat uit getokeniseerde
-regels. In onderstaande tabel staat hoe bepaalde tokens (eerste kolom)
-worden geïnterpreteerd voor verschillende waardes van `escape`.
+regels.
+
+In onderstaande tabel staat hoe bepaalde tokens (eerste kolom) worden
+geïnterpreteerd voor verschillende waardes van `escape`.
 
 token  | `none`   | `half` | `full`
 -------|----------|--------|-------
@@ -127,19 +139,19 @@ token  | `none`   | `half` | `full`
 `\\\[` | `\\\[`   | `\\\[` | `\\\[`
 `\\\]` | `\\\]`   | `\\\]` | `\\\]`
 
-Wat `timeout` betreft:
+#### Wat `timeout` betreft:
 
  * De server kan verschillende timeouts bieden. Als de exacte waarde er
    niet bij zit, wordt de dichtsbijzijnde gebruikt.
  * Waarde 0 betekent dat de server zijn default timeout moet gebruiken.
 
-Wat `parser` betreft:
+#### Wat `parser` betreft:
 
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
  * Een onbekende waarde geeft een `501 Not Implemented`. (Of `400 Bad Request`?)
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
-Wat `maxtokens` betreft:
+#### Wat `maxtokens` betreft:
 
  * De waarde 0 betekent geen limiet.
  * Als de waarde groter is dan de limiet die de server heeft ingesteld,
