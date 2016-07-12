@@ -18,7 +18,7 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 ## Over de tokenizer en de parser
 
 Alpino interpreteert bepaalde tekens op een speciale manier. Zie:
-[Alpino User Guide|Special symbols in the input](http://www.let.rug.nl/vannoord/alp/Alpino/AlpinoUserGuide.html#_special_symbols_in_the_input)
+[Alpino User Guide: Special symbols in the input](http://www.let.rug.nl/vannoord/alp/Alpino/AlpinoUserGuide.html#_special_symbols_in_the_input)
 
 Voor deze API is het van belang wat te doen met rechte haken. Wanneer je
 de tekst laat tokeniseren door de Alpino-server, dan worden er escapes
