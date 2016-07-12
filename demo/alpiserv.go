@@ -1,3 +1,11 @@
+/*
+
+TODO:
+
+ * limits:jobs implementeren
+
+*/
+
 package main
 
 import (
@@ -56,6 +64,7 @@ type Request struct {
 	Id        string // output, cancel
 	Lines     bool   // parse, tokenize
 	Tokens    bool   // parse
+	Escape    string // parse
 	Label     string // parse, tokenize
 	Timeout   int    // parse
 	Parser    string // parse
@@ -316,9 +325,6 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 		if req.Lines {
 			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/tokenize_no_breaks.sh")
 		} else {
-			if req.Label == "" {
-				req.Label = "doc"
-			}
 			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -t '"+shellEscape(req.Label)+".p.%p.s.%l|'")
 		}
 
@@ -516,6 +522,12 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 
 func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 
+	// defaults
+	req.Tokens = false
+	if req.Label == "" {
+		req.Label = "doc"
+	}
+
 	pr, pw := io.Pipe()
 	defer pr.Close()
 
@@ -572,8 +584,21 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 }
 
 func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
+
+	// defaults
 	if req.Label == "" {
 		req.Label = "doc"
+	}
+	if !req.Lines {
+		req.Tokens = false
+	}
+	if req.Tokens {
+		if req.Escape != "none" && req.Escape != "full" {
+			req.Escape = "half"
+		}
+	} else {
+		// Gebruik tokenizer van Alpino. Die doet al full escape.
+		req.Escape = "none"
 	}
 
 	timeout := cfg.Timeout_default
@@ -631,7 +656,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	} else {
 		maxtokens = max(req.Maxtokens, cfg.Max_tokens)
 	}
-	go doJob(jobID, lineno, server, maxtokens)
+	go doJob(jobID, lineno, server, maxtokens, req.Escape)
 
 	fmt.Fprintf(w, `{
     "code": 202,
@@ -644,7 +669,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 `, status[202], jobID, cfg.Interval, lineno, timeout)
 }
 
-func doJob(jobID int64, nlines uint64, server string, maxtokens int) {
+func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape string) {
 	chLog <- fmt.Sprintf("New job %d, %d lines", jobID, nlines)
 
 	j := Job{
@@ -686,6 +711,26 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int) {
 				break
 			}
 			a := strings.SplitN(line, "\t", 2)
+			if escape != "none" {
+				words := strings.Fields(a[1])
+				for i, word := range words {
+					switch word {
+					case `[`:
+						words[i] = `\[`
+					case `]`:
+						words[i] = `\]`
+					case `\[`:
+						if escape == "full" {
+							words[i] = `\\[`
+						}
+					case `\]`:
+						if escape == "full" {
+							words[i] = `\\]`
+						}
+					}
+				}
+				a[1] = strings.Join(words, " ")
+			}
 			lineno++
 			queue <- Task{
 				line:      a[1],

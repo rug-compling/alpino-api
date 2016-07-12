@@ -8,13 +8,34 @@ Deze API wordt onder andere gebruikt door [PaQu](https://github.com/rug-compling
 
 Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 
-### TO DO
+### TODO
 
- * Voorbeeld-implementatie toevoegen.
  * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
  * Sommige elementen (`status`, `tokens`) worden in meerdere
    betekenissen gebruikt. Hernoemen?
  * Metadata?
+
+## Over de tokenizer en de parser
+
+Alpino interpreteert bepaalde tekens op een speciale manier. Zie:
+[Alpino User Guide|Special symbols in the input](http://www.let.rug.nl/vannoord/alp/Alpino/AlpinoUserGuide.html#_special_symbols_in_the_input)
+
+Voor deze API is het van belang wat te doen met rechte haken. Wanneer je
+de tekst laat tokeniseren door de Alpino-server, dan worden er escapes
+gebruikt voor deze tokens:
+
+invoer | uitvoer | interpretatie door de parse
+-------|---------|----------------------------
+[      | \[      | [
+]      | \]      | ]
+\[     | \\[     | \[
+\]     | \\]     | \]
+
+Er is dus geen manier om een token door de parser te laten interpreteren
+als `\\[` of `\\]`.
+
+Wanneer je tekst uploadt naar de server die je zelf getokeniseerd hebt
+gelden er andere regels. Zie onder, bij **Request: parse**.
 
 ## Request en result
 
@@ -83,10 +104,28 @@ element         | type   | default  | voorwaarde   | omschrijving
 ----------------|--------|----------|--------------|------------------------
 `lines`         | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
 `tokens`        | bool   | `false`  | lines: true  | zinnen zijn getokeniseerd
+`escape`        | string | `"half"` | tokens: true | escape van special tekens
 `label`         | string | `"doc"`  | lines: false | prefix voor labels
 `timeout`       | int    | `0`      |              | timeout in seconden voor parsen van één zin
 `parser`        | string | `""`     |              | gebruik alternatieve parser
 `maxtokens`     | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
+
+Wat `escape` betreft:
+
+Alleen van toepassing op invoer die al bestaat uit getokeniseerde
+regels. In onderstaande tabel staat hoe bepaalde tokens (eerste kolom)
+worden geïnterpreteerd voor verschillende waardes van `escape`.
+
+token  | `none`   | `half` | `full`
+-------|----------|--------|-------
+`[`    | speciaal | `[`    | `[`
+`]`    | speciaal | `]`    | `]`
+`\[`   | `[`      | `[`    | `\[`
+`\]`   | `]`      | `]`    | `\]`
+`\\[`  | `\[`     | `\[`   | `\[`
+`\\]`  | `\]`     | `\]`   | `\]`
+`\\\[` | `\\\[`   | `\\\[` | `\\\[`
+`\\\]` | `\\\]`   | `\\\]` | `\\\]`
 
 Wat `timeout` betreft:
 
@@ -325,14 +364,16 @@ Voorbeeld uitvoer:
         "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",
         "workers": 10,
         "jobs": 45,
-		"timeout_default": 60,
-		"timeout_max": 600,
-		"timeout_values": [ 20, 60, 180, 600 ],
-		"parsers": [ "qa" ]
+                "timeout_default": 60,
+                "timeout_max": 600,
+                "timeout_values": [ 20, 60, 180, 600 ],
+                "parsers": [ "qa" ]
     },
     "limits": {
         "jobs": 6,
-		"tokens": 100
+                "tokens": 100
     }
 }
 ```
+
+TODO: ook uitvoer van aantal jobs voor alleen huidig IP-adres?
