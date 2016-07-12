@@ -76,8 +76,8 @@ done
 
 if [ "$1" = "-i" ]
 then
-    ./alpiserv -v config.toml
+    ./alpiner -v config.toml
 else
-    ./alpiserv config.toml &> log/alpiserv.out &
-    ps -p `pgrep -f -u $USER 'alpiserv|server_port=112(11|12|13|21|22|23)'`
+    ./alpiner config.toml &> log/alpiner.out &
+    ps -p `pgrep -f -u $USER 'alpiner|server_port=112(11|12|13|21|22|23)'`
 fi

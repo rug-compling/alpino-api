@@ -36,9 +36,9 @@ then
     exit
 fi
 
-echo Restarting alpiserv
+echo Restarting alpiner
 echo
-cat log/alpiserv.out
+cat log/alpiner.out
 echo
 
 ./stop.bash

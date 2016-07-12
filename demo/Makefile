@@ -2,4 +2,4 @@
 % : %.go
 	go build $<
 
-all: alpiserv
+all: alpiner

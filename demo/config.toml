@@ -2,7 +2,7 @@
 ## Dit bestand is in toml-formaat, zie: https://github.com/mojombo/toml                                         
 ##                                                                                                              
 
-logfile = "log/alpiserv.log"
+logfile = "log/alpiner.log"
 
 about = '''
 Experimentele server, niet voor productiedoeleinden.
@@ -12,7 +12,7 @@ Info: https://github.com/rug-compling/alpino-api
 
 port = 11200
 
-tmp = "/tmp/alpiserv"
+tmp = "/tmp/alpiner"
 
 interval = 300
 
