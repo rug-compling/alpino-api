@@ -15,6 +15,8 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
    betekenissen gebruikt. Hernoemen?
  * Metadata?
 
+Zie ook TODO's hieronder.
+
 ## Over de tokenizer en de parser
 
 Alpino interpreteert bepaalde tekens op een speciale manier. Zie:
@@ -110,7 +112,7 @@ element         | type   | default  | voorwaarde   | omschrijving
 `parser`        | string | `""`     |              | gebruik alternatieve parser
 `maxtokens`     | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
 
-Wat `lines` betreft:
+Wat `lines` betreft, indien `true`:
 
  * Als een regel een `|` bevat dan wordt dat geïnterpreteerd als
    scheidingsteken tussen label en zin.
@@ -218,6 +220,8 @@ element          | type   | default  | voorwaarde   | omschrijving
 -----------------|--------|----------|--------------|------------------------
 `lines`          | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
 `label`          | string | `"doc"`  | lines: false | prefix voor labels
+
+Voor `lines=true` geldt hetzelfde voor `|` en `%` als bij **Request: parse**
 
 Voorbeeld aanroep, tekst volgt na json-object:
 

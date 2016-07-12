@@ -483,6 +483,7 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 			lbl = strings.TrimSpace(a[0])
 			line = strings.TrimSpace(a[1])
 		}
+		// lege zinnen overslaan
 		if line == "" {
 			continue
 		}
@@ -563,8 +564,8 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		if a[0] != "" {
 			fmt.Fprintln(w, a[0]+"|"+a[1])
 		} else {
-			if strings.Contains(a[1], "|") {
-				fmt.Fprint(w, "|") // hierdoor verliezen andere '|'-tekens hun speciale betekenis
+			if strings.Contains(a[1], "|") || strings.HasPrefix(a[1], "%") {
+				fmt.Fprint(w, "|") // hierdoor verliezen andere '|'- en '%'-tekens hun speciale betekenis
 			}
 			fmt.Fprintln(w, a[1])
 		}
