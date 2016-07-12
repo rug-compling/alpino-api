@@ -24,8 +24,8 @@ Voor deze API is het van belang wat te doen met rechte haken. Wanneer je
 de tekst laat tokeniseren door de Alpino-server, dan worden er escapes
 gebruikt voor deze tokens:
 
-invoer   | uitvoer   | interpretatie door de parse
----------|-----------|----------------------------
+invoer   | uitvoer   | interpretatie door de parser
+---------|-----------|-----------------------------
 `[`      | `\[`      | `[`
 `]`      | `\]`      | `]`
 `\[`     | `\\[`     | `\[`
