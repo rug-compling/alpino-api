@@ -110,7 +110,7 @@ element         | type   | default  | voorwaarde   | omschrijving
 `parser`        | string | `""`     |              | gebruik alternatieve parser
 `maxtokens`     | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
 
-#### Wat `lines` betreft:
+Wat `lines` betreft:
 
  * Als een regel een `|` bevat dan wordt dat geïnterpreteerd als
    scheidingsteken tussen label en zin.
@@ -120,7 +120,7 @@ element         | type   | default  | voorwaarde   | omschrijving
 In beide gevallen kun je een `|` aan het begin van de regel toevoegen om
 de speciale interpretatie van verdere `|` en `%` te voorkomen.
 
-#### Wat `escape` betreft:
+Wat `escape` betreft:
 
 Alleen van toepassing op invoer die al bestaat uit getokeniseerde
 regels.
@@ -139,19 +139,19 @@ token  | `none`   | `half` | `full`
 `\\\[` | `\\\[`   | `\\\[` | `\\\[`
 `\\\]` | `\\\]`   | `\\\]` | `\\\]`
 
-#### Wat `timeout` betreft:
+Wat `timeout` betreft:
 
  * De server kan verschillende timeouts bieden. Als de exacte waarde er
    niet bij zit, wordt de dichtsbijzijnde gebruikt.
  * Waarde 0 betekent dat de server zijn default timeout moet gebruiken.
 
-#### Wat `parser` betreft:
+Wat `parser` betreft:
 
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
  * Een onbekende waarde geeft een `501 Not Implemented`. (Of `400 Bad Request`?)
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
-#### Wat `maxtokens` betreft:
+Wat `maxtokens` betreft:
 
  * De waarde 0 betekent geen limiet.
  * Als de waarde groter is dan de limiet die de server heeft ingesteld,
