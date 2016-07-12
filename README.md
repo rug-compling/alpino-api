@@ -102,7 +102,7 @@ Parameters, allen optioneel:
 
 element         | type   | default  | voorwaarde   | omschrijving
 ----------------|--------|----------|--------------|------------------------
-`lines`         | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
+`lines`         | bool   | `false`  |              | true: één zin per regel; false: doorlopende tekst
 `tokens`        | bool   | `false`  | lines: true  | zinnen zijn getokeniseerd
 `escape`        | string | `"half"` | tokens: true | escape van special tekens
 `label`         | string | `"doc"`  | lines: false | prefix voor labels
