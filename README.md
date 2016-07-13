@@ -114,10 +114,10 @@ element         | type   | default  | voorwaarde   | omschrijving
 
 Wat `lines` betreft, indien `true`:
 
- * Als een regel een `|` bevat dan wordt dat geïnterpreteerd als
-   scheidingsteken tussen label en zin.
- * Een regel zonder label die met een `%` begint, wordt beschouwd als
-   commentaarregel, en genegeerd. Een label kan niet met `%` beginnen.
+ * Een regel die met een `%` begint wordt beschouwd als commentaarregel,
+   en genegeerd.
+ * Als een regel (zonder `%` aan het begin) een `|` bevat, dan wordt dat
+   geïnterpreteerd als scheidingsteken tussen label en zin.
 
 In beide gevallen kun je een `|` aan het begin van de regel toevoegen om
 de speciale interpretatie van verdere `|` en `%` te voorkomen.
@@ -221,7 +221,18 @@ element          | type   | default  | voorwaarde   | omschrijving
 `lines`          | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
 `label`          | string | `"doc"`  | lines: false | prefix voor labels
 
-Voor `lines=true` geldt hetzelfde voor `|` en `%` als bij **Request: parse**
+Wat `lines` betreft, indien `true`:
+
+ * Een regel die met een `%` begint wordt beschouwd als
+   commentaarregel, en wordt gekopieerd naar de uitvoer zonder
+   tokenisatie.
+ * Als een regel (zonder `%` aan het begin) een `|` bevat dan wordt dat
+   geïnterpreteerd als scheidingsteken tussen label en zin. Alleen het
+   deel na de eerste `|` wordt getokeniseerd.
+
+In beide gevallen kun je een `|` aan het begin van de regel toevoegen om
+de speciale interpretatie van verdere `|` en `%` te voorkomen.
+
 
 Voorbeeld aanroep, tekst volgt na json-object:
 

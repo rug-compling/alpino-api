@@ -303,7 +303,8 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 
 	var chErrWait chan bool
 	var cmd *exec.Cmd
-	var tokerr1, tokerr2, tokerr3 error
+	var tokerr1, tokerr2, tokerr3, tokerr4 error
+	var raw bool
 
 	if req.Lines && req.Tokens {
 
@@ -353,13 +354,17 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 			// een zin per regel -> tokenize_no_breaks.sh, kan niet met labels omgaan
 			//
 
-			// shell tokenize_no_breaks.sh input: labels van zinnen afsplitsen
+			// shell tokenize_no_breaks.sh input
+			//   * commentaren en lege regels coderen
+			//   * labels van zinnen afsplitsen
+			raw = true
 			fpin, err := cmd.StdinPipe()
 			if err != nil {
 				return 0, err
 			}
 			go func() {
 				defer fpin.Close()
+				firstline := true
 				reader := util.NewReader(source)
 				for {
 					line, err := reader.ReadLineString()
@@ -371,21 +376,43 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 						tokerr1 = err
 						break
 					}
-					if strings.HasPrefix(line, "%") {
-						// volgens specificatie van Alpino is dit een commentaarregel
+
+					// spaties en tabs aan begin verwijderen
+					line = strings.TrimSpace(line)
+
+					// als eerste regel leeg is die overslaan
+					if firstline && line == "" {
+						firstline = false
 						continue
 					}
+					firstline = false
+
+					// lege regels en commentaren niet tokeniseren
+					if line == "" || line[0] == '%' {
+						fmt.Fprintln(fpin, "%%RAW%%", hex.EncodeToString([]byte(line)))
+						continue
+					}
+
 					a := strings.SplitN(line, "|", 2)
 					if len(a) == 2 {
-						fmt.Fprintln(fpin, "##LABEL##", hex.EncodeToString([]byte(a[0])))
-						fmt.Fprintln(fpin, a[1])
+						lbl := strings.TrimSpace(a[0])
+						lne := strings.TrimSpace(a[1])
+						if lne == "" {
+							// TODO: geen zin: wat te doen?
+							fmt.Fprintln(fpin, "%%RAW%%", hex.EncodeToString([]byte("%%ERROR-NO-TEXT%% "+line)))
+							continue
+						}
+						fmt.Fprintln(fpin, "%%LBL%%", hex.EncodeToString([]byte(lbl)))
+						fmt.Fprintln(fpin, lne)
 					} else {
 						fmt.Fprintln(fpin, line)
 					}
 				}
 			}()
 
-			// shell tokenize_no_breaks.sh output: labels en zinnen aan elkaar plakken
+			// shell tokenize_no_breaks.sh output
+			//   * lege regels en commentaren decoderen
+			//   * labels en zinnen aan elkaar plakken
 			var writer io.WriteCloser
 			tokenizer, writer = io.Pipe()
 			defer tokenizer.Close()
@@ -408,8 +435,16 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 						tokerr2 = err
 						break
 					}
-					if strings.HasPrefix(line, "##LABEL##") {
-						b, err := hex.DecodeString(strings.TrimSpace(line[9:]))
+					if strings.HasPrefix(line, "%%RAW%%") {
+						b, err := hex.DecodeString(strings.TrimSpace(line[7:]))
+						if err != nil {
+							chLog <- fmt.Sprintf("tokenize: %v", err)
+							tokerr2 = err
+							break
+						}
+						fmt.Fprintln(writer, "%%RAW%%", string(b))
+					} else if strings.HasPrefix(line, "%%LBL%%") {
+						b, err := hex.DecodeString(strings.TrimSpace(line[7:]))
 						if err != nil {
 							chLog <- fmt.Sprintf("tokenize: %v", err)
 							tokerr2 = err
@@ -474,18 +509,25 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 			break
 		}
 		if err != nil {
-			return 0, err
+			tokerr4 = err
+			break
 		}
-		line = strings.TrimSpace(line)
+
+		// lege regels en commentaren ongewijzigd naar uitvoer
+		if raw && strings.HasPrefix(line, "%%RAW%%") {
+			fmt.Fprintln(writer, strings.TrimSpace(line[7:]))
+			continue
+		}
+		if line == "" || line[0] == '%' {
+			fmt.Fprintln(writer, line)
+			continue
+		}
+
 		var lbl string
 		a := strings.SplitN(line, "|", 2)
 		if len(a) == 2 {
 			lbl = strings.TrimSpace(a[0])
 			line = strings.TrimSpace(a[1])
-		}
-		// lege zinnen overslaan
-		if line == "" {
-			continue
 		}
 		lineno++
 		fmt.Fprintf(writer, "%s\t%s\n", lbl, line)
@@ -512,6 +554,10 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 		if err != nil {
 			return 0, err
 		}
+	}
+
+	if tokerr4 != nil {
+		return 0, tokerr4
 	}
 
 	//
@@ -560,12 +606,16 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 			break
 		}
 		started = true
+		if line == "" || line[0] == '%' {
+			fmt.Fprintln(w, line)
+			continue
+		}
 		a := strings.SplitN(line, "\t", 2)
 		if a[0] != "" {
 			fmt.Fprintln(w, a[0]+"|"+a[1])
 		} else {
 			if strings.Contains(a[1], "|") || strings.HasPrefix(a[1], "%") {
-				fmt.Fprint(w, "|") // hierdoor verliezen andere '|'- en '%'-tekens hun speciale betekenis
+				fmt.Fprint(w, "|") // hierdoor verliezen andere '|'-tekens hun speciale betekenis
 			}
 			fmt.Fprintln(w, a[1])
 		}
@@ -710,6 +760,9 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 				cancel(&j)
 				j.mu.Unlock()
 				break
+			}
+			if line == "" || line[0] == '%' {
+				continue
 			}
 			a := strings.SplitN(line, "\t", 2)
 			if escape != "none" {
