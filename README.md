@@ -245,7 +245,7 @@ Voorbeeld aanroep, tekst volgt na json-object:
 Ik besta. Jij bestaat.
 ```
 
-Bij succes krijg je platte tekst terug.
+Bij succes krijg je platte tekst terug, type `text/plain`.
 
 Voorbeeld uitvoer:
 
