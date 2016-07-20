@@ -4,6 +4,8 @@ TODO:
 
  * limits:jobs implementeren
 
+Meer TODOs beneden
+
 */
 
 package main
@@ -38,6 +40,8 @@ const (
 	VersionMinor = 1
 )
 
+//. Types voor configuratie van de server ......................
+
 type Config struct {
 	Logfile         string
 	About           string
@@ -59,6 +63,8 @@ type AlpinoT struct {
 	Server  string
 }
 
+//. Type voor API-request ......................................
+
 type Request struct {
 	Request   string
 	Id        string // output, cancel
@@ -71,43 +77,57 @@ type Request struct {
 	Maxtokens int    // parse
 }
 
-type Task struct {
-	line      string
-	label     string
-	lineno    uint64
-	maxtokens int
-	job       *Job
-}
+//. Types voor API-request=parse ...............................
 
+// Het hele corpus.
+// Aangemaakt en uiteindelijk weer verwijderd in de functie `doJob`.
 type Job struct {
 	id        int64
 	mu        sync.Mutex
 	expires   time.Time
-	count     uint64
-	cancelled chan bool
+	count     uint64    // Aantal zinnen dat nog geparst moet worden.
+	cancelled chan bool // Wordt gesloten als verwerking job moet stoppen.
 	err       error
 	code      int
-	server    string
+	maxtokens int
+	server    string // Door welke Alpino-server de zinnen geparst moeten worden.
 }
 
+// Een enkele zin uit het corpus.
+// Aangemaakt in de functie `doJob`, en via channel `queue` naar
+// een van de workers gestuurd.
+type Task struct {
+	line   string
+	label  string
+	lineno uint64
+	job    *Job // Bij welke Job deze Task hoort
+}
+
+//. Globale variabelen .........................................
+
 var (
+	// Als true, echo log naar stdout.
+	verbose = flag.Bool("v", false, "verbose")
+
 	cfg Config
 
+	// Alle jobs.
 	jobsMu sync.Mutex
-	jobs   = make(map[int64]*Job)
-	queue  = make(chan Task)
+	jobs   = make(map[int64]*Job) // id : job
 
-	verbose = flag.Bool("v", false, "verbose")
-	started = time.Now()
-	chLog   = make(chan string)
-	//wg           sync.WaitGroup
+	// Voor het sturen van een zin uit een job naar een worker.
+	queue = make(chan Task)
+
+	chLog        = make(chan string)
 	wgLogger     sync.WaitGroup
 	chGlobalExit = make(chan bool)
 	chLoggerExit = make(chan bool)
+	//wg           sync.WaitGroup
 
-	servers = make(map[int]map[string]string) // timeout > parser > server
-	parsers = make([]string, 0)
+	servers = make(map[int]map[string]string) // timeout : parser : server
+	parsers = make([]string, 0)               // lijst van niet-standaard parsers
 
+	// Standaard http-codes.
 	status = map[int]string{
 		200: "OK",
 		202: "Accepted",
@@ -118,12 +138,18 @@ var (
 		501: "Not Implemented",
 		503: "Service Unavailable",
 	}
+
+	// Hoe lang is de server in de lucht?
+	timestart = time.Now()
 )
+
+//. main .......................................................
 
 func main() {
 
 	flag.Parse()
 
+	// Configuratie inlezen.
 	md, err := toml.DecodeFile(flag.Arg(0), &cfg)
 	util.CheckErr(err)
 	if un := md.Undecoded(); len(un) > 0 {
@@ -131,6 +157,7 @@ func main() {
 		return
 	}
 
+	// Gegevens over beschikbare parsers verwerken.
 	seen := make(map[string]bool)
 	for _, a := range cfg.Alpino {
 		if _, ok := servers[a.Timeout]; !ok {
@@ -156,22 +183,25 @@ func main() {
 		wgLogger.Done()
 	}()
 
+	// Voor het schoon afsluiten.
 	go func() {
 		chSignal := make(chan os.Signal, 1)
 		signal.Notify(chSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 		sig := <-chSignal
 		chLog <- fmt.Sprintf("Signal: %v", sig)
 
-		close(chGlobalExit)
+		close(chGlobalExit) // signaal dat alle verwerking moet stoppen
 		//wg.Wait()
 
-		chLog <- fmt.Sprintf("Uptime: %v", time.Now().Sub(started))
-		close(chLoggerExit)
-		wgLogger.Wait()
+		chLog <- fmt.Sprintf("Uptime: %v", time.Since(timestart))
+
+		close(chLoggerExit) // signaal dat de logger moet stoppen
+		wgLogger.Wait()     // wacht tot de logger is gestopt
 
 		os.Exit(0)
 	}()
 
+	// Elke worker parst één zin tegelijk.
 	for i := 0; i < cfg.Workers; i++ {
 		//wg.Add(1)
 		go func() {
@@ -180,6 +210,8 @@ func main() {
 		}()
 	}
 
+	// Dit cancelt (voltooide) jobs waarvan de timeout is verlopen.
+	// Gecancelde jobs worden hier niet verwijderd, dat gebeurt in de functie 'doJob'.
 	go func() {
 		for {
 			time.Sleep(time.Duration(cfg.Interval) * time.Second)
@@ -218,12 +250,15 @@ func main() {
 	fmt.Println(http.ListenAndServe(fmt.Sprint(":", cfg.Port), nil))
 }
 
+//. Handlers voor http-request .................................
+
 func noHandler(w http.ResponseWriter, r *http.Request) {
 	logRequest(r)
 	chLog <- "Not found: " + r.URL.Path
 	http.NotFound(w, r)
 }
 
+// Om te testen of het programma reageert.
 func upHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/up" {
 		noHandler(w, r)
@@ -234,9 +269,10 @@ func upHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Add("Pragma", "no-cache")
-	w.Write([]byte("up\n"))
+	w.Write([]byte("alpiner\n"))
 }
 
+// De eigenlijk API.
 func jsonHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/json" {
 		noHandler(w, r)
@@ -262,6 +298,11 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logRequest(r, request.Request, request.Id)
+
+	// Wanneer na het json-object nog data volgt in r.Body, dan heeft
+	// de json-decoder daar waarschijnlijk al een deel van ingelezen.
+	// Dat deel is beschikbaar in dec.Buffered(). Het nog niet ingelezen
+	// deel zit in r.Body.
 	switch request.Request {
 	case "parse":
 		reqParse(w, request, dec.Buffered(), r.Body)
@@ -271,6 +312,7 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 		// alleen jobs van type "parse"
 		reqOutput(w, request)
 	case "cancel":
+		// alleen jobs van type "parse"
 		reqCancel(w, request)
 	case "info":
 		reqInfo(w)
@@ -278,6 +320,328 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 		x(w, fmt.Errorf("Invalid request: %s", request.Request), 400)
 	}
 }
+
+//. Handlers voor API-requests .................................
+
+func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
+
+	// defaults
+	if req.Label == "" {
+		req.Label = "doc"
+	}
+	if !req.Lines {
+		req.Tokens = false
+	}
+	if req.Tokens {
+		if req.Escape != "none" && req.Escape != "full" {
+			req.Escape = "half"
+		}
+	} else {
+		// Gebruik tokenizer van Alpino. Die doet al full escape.
+		req.Escape = "none"
+	}
+
+	timeout := cfg.Timeout_default
+	if req.Timeout > 0 {
+		timeout = cfg.Timeout_values[0]
+		diff := abs(timeout - req.Timeout)
+		for _, t := range cfg.Timeout_values[1:] {
+			d := abs(t - req.Timeout)
+			if d < diff {
+				d = diff
+				timeout = t
+			}
+		}
+	}
+	// Voorwaarde: alle timeouts zijn voor alle servers beschikbaar.
+	server, ok := servers[timeout][req.Parser]
+	if !ok {
+		x(w, fmt.Errorf("Unknown parser %q", req.Parser), 501)
+		return
+	}
+
+	jobID := rand.Int63()
+	for jobID < 1 {
+		jobID = rand.Int63()
+	}
+
+	dir := filepath.Join(cfg.Tmp, fmt.Sprint(jobID))
+	if x(w, os.Mkdir(dir, 0700), 500) {
+		return
+	}
+
+	fp, err := os.Create(filepath.Join(dir, "00"))
+	if x(w, err, 500) {
+		os.RemoveAll(dir)
+		return
+	}
+	lineno, err := tokenize(fp, req, rds...)
+	fp.Close()
+
+	if x(w, err, 500) {
+		os.RemoveAll(dir)
+		return
+	}
+
+	if lineno == 0 {
+		os.RemoveAll(dir)
+		x(w, fmt.Errorf("No data"), 400)
+		return
+	}
+
+	var maxtokens int
+	if req.Maxtokens > 0 && cfg.Max_tokens > 0 {
+		maxtokens = min(req.Maxtokens, cfg.Max_tokens)
+	} else {
+		maxtokens = max(req.Maxtokens, cfg.Max_tokens)
+	}
+	go doJob(jobID, lineno, server, maxtokens, req.Escape)
+
+	fmt.Fprintf(w, `{
+    "code": 202,
+    "status": %q,
+    "id": "%d",
+    "interval": %d,
+    "lines": %d,
+    "timeout": %d
+}
+`, status[202], jobID, cfg.Interval, lineno, timeout)
+}
+
+func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
+
+	// defaults
+	req.Tokens = false
+	if req.Label == "" {
+		req.Label = "doc"
+	}
+
+	pr, pw := io.Pipe()
+	defer pr.Close()
+
+	chWait := make(chan bool)
+
+	var tokerr error
+	go func() {
+		_, tokerr = tokenize(pw, req, rds...)
+		pw.Close()
+		close(chWait)
+	}()
+
+	started := false
+	reader := util.NewReader(pr)
+	for {
+		line, err := reader.ReadLineString()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			if started {
+				fmt.Fprintf(w, "<<<ERROR>>> %v", err)
+			} else {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Cache-Control", "no-cache")
+				w.Header().Add("Pragma", "no-cache")
+				x(w, err, 500)
+			}
+			break
+		}
+		started = true
+		if line == "" || line[0] == '%' {
+			fmt.Fprintln(w, line)
+			continue
+		}
+		a := strings.SplitN(line, "\t", 2)
+		if a[0] != "" {
+			fmt.Fprintln(w, a[0]+"|"+a[1])
+		} else {
+			if strings.Contains(a[1], "|") || strings.HasPrefix(a[1], "%") {
+				fmt.Fprint(w, "|") // hierdoor verliezen andere '|'-tekens hun speciale betekenis
+			}
+			fmt.Fprintln(w, a[1])
+		}
+	}
+
+	<-chWait
+	if tokerr != nil {
+		if started {
+			fmt.Fprintf(w, "<<<ERROR>>> %v", tokerr)
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Add("Pragma", "no-cache")
+			x(w, tokerr, 500)
+		}
+	}
+}
+
+func reqOutput(w http.ResponseWriter, req Request) {
+	id, err := strconv.ParseInt(req.Id, 10, 64)
+	if err != nil {
+		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
+		return
+	}
+
+	jobsMu.Lock()
+	job, ok := jobs[id]
+	if ok {
+		job.mu.Lock()
+		defer job.mu.Unlock()
+	}
+	jobsMu.Unlock()
+
+	if !ok {
+		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
+		return
+
+	}
+
+	if x(w, job.err, job.code) {
+		return
+	}
+
+	if time.Now().After(job.expires) {
+		x(w, fmt.Errorf("Job expired"), 400)
+		cancel(job)
+		return
+	}
+
+	dir := filepath.Join(cfg.Tmp, fmt.Sprint(req.Id))
+	files, err := ioutil.ReadDir(dir)
+	if x(w, err, 500) {
+		return
+	}
+	w.Write([]byte(`{
+    "code": 200,
+    "status": "OK",
+    "batch": [`))
+	next := false
+	for _, file := range files {
+		if filename := file.Name(); filename != "00" && !file.IsDir() {
+			if next {
+				w.Write([]byte(",\n"))
+			} else {
+				w.Write([]byte("\n"))
+				next = true
+			}
+			full := filepath.Join(dir, filename)
+			fp, err := os.Open(full)
+			if err != nil {
+				fmt.Fprintf(w, `{"status":"internal","log":%q}`, err.Error())
+			} else {
+				io.Copy(w, fp)
+				fp.Close()
+				os.Remove(full)
+			}
+		}
+	}
+
+	fmt.Fprintf(w, `
+    ],
+    "finished": %v
+}
+`, job.count == 0)
+
+	job.expires = time.Now().Add(2 * time.Duration(cfg.Interval) * time.Second)
+
+	if job.count == 0 {
+		cancel(job)
+	}
+}
+
+func reqCancel(w http.ResponseWriter, req Request) {
+	id, err := strconv.ParseInt(req.Id, 10, 64)
+	if err != nil {
+		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
+		return
+	}
+
+	jobsMu.Lock()
+	job, ok := jobs[id]
+	if ok {
+		job.mu.Lock()
+		defer job.mu.Unlock()
+	}
+	jobsMu.Unlock()
+
+	if !ok {
+		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
+		return
+
+	}
+
+	if x(w, job.err, job.code) {
+		return
+	}
+
+	if time.Now().After(job.expires) {
+		x(w, fmt.Errorf("Job expired"), 400)
+		cancel(job)
+		return
+	}
+
+	chLog <- "Job " + req.Id + " cancelled"
+	cancel(job)
+	w.Write([]byte(`{
+    "code": 200,
+    "status": "OK
+}
+`))
+}
+
+func reqInfo(w http.ResponseWriter) {
+
+	jobsMu.Lock()
+	njobs := len(jobs)
+	jobsMu.Unlock()
+
+	fmt.Fprintf(w, `{
+    "code": 200,
+    "status": "OK",
+    "api": {
+        "major": %d,
+        "minor": %d
+    },
+    "server": {
+        "about": %q,
+        "workers": %d,
+        "jobs": %d,
+        "timeout_default": %d,
+        "timeout_max": %d,
+        "timeout_values": [`,
+		VersionMajor,
+		VersionMinor,
+		cfg.About,
+		cfg.Workers,
+		njobs,
+		cfg.Timeout_default,
+		cfg.Timeout_max)
+	p := ""
+	for _, t := range cfg.Timeout_values {
+		fmt.Fprintf(w, "%s %d", p, t)
+		p = ","
+	}
+	fmt.Fprintf(w, ` ],
+        "parsers": [`)
+	p = ""
+	for _, t := range parsers {
+		fmt.Fprintf(w, "%s %q", p, t)
+		p = ","
+	}
+	fmt.Fprintf(w, ` ]
+    },
+    "limits": {
+        "jobs": %d,
+        "tokens": %d
+    }
+}
+`,
+		cfg.Max_jobs, cfg.Max_tokens)
+}
+
+// einde API-requests
+
+//. Hulpfunctie voor `reqParse` en `reqTokenize` ...............
 
 func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, error) {
 
@@ -567,158 +931,11 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 	return lineno, nil
 }
 
-func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
+//. Hulpfunctie voor request `reqParse` ........................
 
-	// defaults
-	req.Tokens = false
-	if req.Label == "" {
-		req.Label = "doc"
-	}
-
-	pr, pw := io.Pipe()
-	defer pr.Close()
-
-	chWait := make(chan bool)
-
-	var tokerr error
-	go func() {
-		_, tokerr = tokenize(pw, req, rds...)
-		pw.Close()
-		close(chWait)
-	}()
-
-	started := false
-	reader := util.NewReader(pr)
-	for {
-		line, err := reader.ReadLineString()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			if started {
-				fmt.Fprintf(w, "<<<ERROR>>> %v", err)
-			} else {
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Cache-Control", "no-cache")
-				w.Header().Add("Pragma", "no-cache")
-				x(w, err, 500)
-			}
-			break
-		}
-		started = true
-		if line == "" || line[0] == '%' {
-			fmt.Fprintln(w, line)
-			continue
-		}
-		a := strings.SplitN(line, "\t", 2)
-		if a[0] != "" {
-			fmt.Fprintln(w, a[0]+"|"+a[1])
-		} else {
-			if strings.Contains(a[1], "|") || strings.HasPrefix(a[1], "%") {
-				fmt.Fprint(w, "|") // hierdoor verliezen andere '|'-tekens hun speciale betekenis
-			}
-			fmt.Fprintln(w, a[1])
-		}
-	}
-
-	<-chWait
-	if tokerr != nil {
-		if started {
-			fmt.Fprintf(w, "<<<ERROR>>> %v", tokerr)
-		} else {
-			w.Header().Set("Content-Type", "application/json")
-			w.Header().Set("Cache-Control", "no-cache")
-			w.Header().Add("Pragma", "no-cache")
-			x(w, tokerr, 500)
-		}
-	}
-}
-
-func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
-
-	// defaults
-	if req.Label == "" {
-		req.Label = "doc"
-	}
-	if !req.Lines {
-		req.Tokens = false
-	}
-	if req.Tokens {
-		if req.Escape != "none" && req.Escape != "full" {
-			req.Escape = "half"
-		}
-	} else {
-		// Gebruik tokenizer van Alpino. Die doet al full escape.
-		req.Escape = "none"
-	}
-
-	timeout := cfg.Timeout_default
-	if req.Timeout > 0 {
-		timeout = cfg.Timeout_values[0]
-		diff := abs(timeout - req.Timeout)
-		for _, t := range cfg.Timeout_values[1:] {
-			d := abs(t - req.Timeout)
-			if d < diff {
-				d = diff
-				timeout = t
-			}
-		}
-	}
-	// voorwaarde: alle timeouts zijn voor alle servers beschikbaar
-	server, ok := servers[timeout][req.Parser]
-	if !ok {
-		x(w, fmt.Errorf("Unknown parser %q", req.Parser), 501)
-		return
-	}
-
-	jobID := rand.Int63()
-	for jobID < 1 {
-		jobID = rand.Int63()
-	}
-
-	dir := filepath.Join(cfg.Tmp, fmt.Sprint(jobID))
-	if x(w, os.Mkdir(dir, 0700), 500) {
-		return
-	}
-
-	fp, err := os.Create(filepath.Join(dir, "00"))
-	if x(w, err, 500) {
-		os.RemoveAll(dir)
-		return
-	}
-
-	lineno, err := tokenize(fp, req, rds...)
-	fp.Close()
-
-	if x(w, err, 500) {
-		os.RemoveAll(dir)
-		return
-	}
-
-	if lineno == 0 {
-		os.RemoveAll(dir)
-		x(w, fmt.Errorf("No data"), 400)
-		return
-	}
-
-	var maxtokens int
-	if req.Maxtokens > 0 && cfg.Max_tokens > 0 {
-		maxtokens = min(req.Maxtokens, cfg.Max_tokens)
-	} else {
-		maxtokens = max(req.Maxtokens, cfg.Max_tokens)
-	}
-	go doJob(jobID, lineno, server, maxtokens, req.Escape)
-
-	fmt.Fprintf(w, `{
-    "code": 202,
-    "status": %q,
-    "id": "%d",
-    "interval": %d,
-    "lines": %d,
-    "timeout": %d
-}
-`, status[202], jobID, cfg.Interval, lineno, timeout)
-}
+// Wanneer de functie 'reqParse' de data heeft ingelezen, eventueel
+// getokeniseerd, en opgeslagen, dan start het een goroutine met
+// deze functie voor verdere verwerking.
 
 func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape string) {
 	chLog <- fmt.Sprintf("New job %d, %d lines", jobID, nlines)
@@ -729,6 +946,7 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 		count:     nlines,
 		cancelled: make(chan bool),
 		server:    server,
+		maxtokens: maxtokens,
 	}
 	jobsMu.Lock()
 	jobs[jobID] = &j
@@ -787,11 +1005,10 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 			}
 			lineno++
 			queue <- Task{
-				line:      a[1],
-				label:     a[0],
-				lineno:    lineno,
-				job:       &j,
-				maxtokens: maxtokens,
+				line:   a[1],
+				label:  a[0],
+				lineno: lineno,
+				job:    &j,
 			}
 
 			select {
@@ -819,169 +1036,10 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 	chLog <- fmt.Sprintf("Job %d finished", jobID)
 }
 
-func reqOutput(w http.ResponseWriter, req Request) {
-	id, err := strconv.ParseInt(req.Id, 10, 64)
-	if err != nil {
-		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
-		return
-	}
+//. worker .....................................................
 
-	jobsMu.Lock()
-	job, ok := jobs[id]
-	if ok {
-		job.mu.Lock()
-		defer job.mu.Unlock()
-	}
-	jobsMu.Unlock()
-
-	if !ok {
-		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
-		return
-
-	}
-
-	if x(w, job.err, job.code) {
-		return
-	}
-
-	if time.Now().After(job.expires) {
-		x(w, fmt.Errorf("Job expired"), 400)
-		cancel(job)
-		return
-	}
-
-	dir := filepath.Join(cfg.Tmp, fmt.Sprint(req.Id))
-	files, err := ioutil.ReadDir(dir)
-	if x(w, err, 500) {
-		return
-	}
-	w.Write([]byte(`{
-    "code": 200,
-    "status": "OK",
-    "batch": [`))
-	next := false
-	for _, file := range files {
-		if filename := file.Name(); filename != "00" && !file.IsDir() {
-			if next {
-				w.Write([]byte(",\n"))
-			} else {
-				w.Write([]byte("\n"))
-				next = true
-			}
-			full := filepath.Join(dir, filename)
-			fp, err := os.Open(full)
-			if err != nil {
-				fmt.Fprintf(w, `{"status":"internal","log":%q}`, err.Error())
-			} else {
-				io.Copy(w, fp)
-				fp.Close()
-				os.Remove(full)
-			}
-		}
-	}
-
-	fmt.Fprintf(w, `
-    ],
-    "finished": %v
-}
-`, job.count == 0)
-
-	job.expires = time.Now().Add(2 * time.Duration(cfg.Interval) * time.Second)
-
-	if job.count == 0 {
-		cancel(job)
-	}
-}
-
-func reqCancel(w http.ResponseWriter, req Request) {
-	id, err := strconv.ParseInt(req.Id, 10, 64)
-	if err != nil {
-		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
-		return
-	}
-
-	jobsMu.Lock()
-	job, ok := jobs[id]
-	if ok {
-		job.mu.Lock()
-		defer job.mu.Unlock()
-	}
-	jobsMu.Unlock()
-
-	if !ok {
-		x(w, fmt.Errorf("Invalid id: %s", req.Id), 400)
-		return
-
-	}
-
-	if x(w, job.err, job.code) {
-		return
-	}
-
-	if time.Now().After(job.expires) {
-		x(w, fmt.Errorf("Job expired"), 400)
-		cancel(job)
-		return
-	}
-
-	chLog <- "Job " + req.Id + " cancelled"
-	cancel(job)
-	w.Write([]byte(`{
-    "code": 200,
-    "status": "OK
-}
-`))
-}
-
-func reqInfo(w http.ResponseWriter) {
-
-	jobsMu.Lock()
-	njobs := len(jobs)
-	jobsMu.Unlock()
-
-	fmt.Fprintf(w, `{
-    "code": 200,
-    "status": "OK",
-    "api": {
-        "major": %d,
-        "minor": %d
-    },
-    "server": {
-        "about": %q,
-        "workers": %d,
-        "jobs": %d,
-        "timeout_default": %d,
-        "timeout_max": %d,
-        "timeout_values": [`,
-		VersionMajor,
-		VersionMinor,
-		cfg.About,
-		cfg.Workers,
-		njobs,
-		cfg.Timeout_default,
-		cfg.Timeout_max)
-	p := ""
-	for _, t := range cfg.Timeout_values {
-		fmt.Fprintf(w, "%s %d", p, t)
-		p = ","
-	}
-	fmt.Fprintf(w, ` ],
-        "parsers": [`)
-	p = ""
-	for _, t := range parsers {
-		fmt.Fprintf(w, "%s %q", p, t)
-		p = ","
-	}
-	fmt.Fprintf(w, ` ]
-    },
-    "limits": {
-        "jobs": %d,
-        "tokens": %d
-    }
-}
-`,
-		cfg.Max_jobs, cfg.Max_tokens)
-}
+// Een worker zorgt voor het parsen van de zin, één tegelijk.
+// Zinnen worden ingelzen vanuit channel `queue`.
 
 func worker() {
 
@@ -1002,14 +1060,16 @@ WORKER:
 		job.mu.Lock()
 		exp := job.expires
 		if time.Now().After(exp) {
+			chLog <- fmt.Sprintf("Running job %d expired", job.id)
 			cancel(job)
 			job.mu.Unlock()
 			continue WORKER
 		}
+		maxtokens := job.maxtokens
 		job.mu.Unlock()
 
-		if task.maxtokens > 0 {
-			if n := len(strings.Fields(task.line)); n > task.maxtokens {
+		if maxtokens > 0 {
+			if n := len(strings.Fields(task.line)); n > maxtokens {
 				job.mu.Lock()
 				fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 				if err == nil {
@@ -1085,7 +1145,10 @@ WORKER:
 	}
 }
 
-// aanname: job is gelockt
+//. Overige hulpfuncties .......................................
+
+// Cancel een job.
+// Aanname: job is gelockt.
 func cancel(job *Job) {
 	select {
 	case <-job.cancelled:
@@ -1094,6 +1157,8 @@ func cancel(job *Job) {
 	}
 }
 
+// http-response bij een fout.
+// TODO: set http response code?
 func x(w http.ResponseWriter, err error, code int) bool {
 	if err == nil {
 		return false
@@ -1110,10 +1175,15 @@ func x(w http.ResponseWriter, err error, code int) bool {
     "message": %q
 }
 `, code, status[code], msg)
+
 	chLog <- fmt.Sprintf("%d %s: %s -- %v", code, status[code], line, err)
+
 	return true
 }
 
+// De logger leest meldingen uit channel `chLog`.
+// Uitvoer naar logbestand (automatisch geroteerd als het te groot wordt).
+// Uitvoer naar os.Stdout, indien verbose=true.
 func logger() {
 
 	logfile := cfg.Logfile
@@ -1156,8 +1226,15 @@ func logger() {
 	}
 }
 
+// Stuur gegevens over request naar de logger.
 func logRequest(r *http.Request, a ...interface{}) {
 	chLog <- fmt.Sprintf("[%s] %s %s %s %v", r.Header.Get("X-Forwarded-For"), r.RemoteAddr, r.Method, r.URL, a)
+}
+
+// `s` wordt gebruikt tussen enkele quotes, dus als `s` zelf enkele quotes bevat
+// moeten die vervangen worden: ' -> '\''
+func shellEscape(s string) string {
+	return strings.Replace(s, `'`, `'\''`, -1)
 }
 
 func abs(i int) int {
@@ -1165,10 +1242,6 @@ func abs(i int) int {
 		return -i
 	}
 	return i
-}
-
-func shellEscape(s string) string {
-	return strings.Replace(s, `'`, `'\''`, -1)
 }
 
 func max(a ...int) int {

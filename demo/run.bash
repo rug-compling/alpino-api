@@ -16,7 +16,7 @@ done
 
 if [ $RESTART = 0 ]
 then
-    if [ "`curl http://127.0.0.1:11200/up 2> /dev/null`" != "up" ]
+    if [ "`curl http://127.0.0.1:11200/up 2> /dev/null`" != "alpiner" ]
     then
 	RESTART=1
     fi
