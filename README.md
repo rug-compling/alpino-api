@@ -398,7 +398,7 @@ Voorbeeld uitvoer:
     },
     "limits": {
         "jobs": 6,
-                "tokens": 100
+        "tokens": 100
     }
 }
 ```
