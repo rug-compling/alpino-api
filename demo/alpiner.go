@@ -48,6 +48,7 @@ type Config struct {
 	Port            int
 	Tmp             string
 	Interval        int
+	Interval_system int
 	Workers         int
 	Max_jobs        int
 	Max_tokens      int
@@ -542,7 +543,7 @@ func reqOutput(w http.ResponseWriter, req Request) {
 }
 `, job.count == 0)
 
-	job.expires = time.Now().Add(2 * time.Duration(cfg.Interval) * time.Second)
+	job.expires = time.Now().Add(time.Duration(cfg.Interval_system) * time.Second)
 
 	if job.count == 0 {
 		cancel(job)
@@ -942,7 +943,7 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 
 	j := Job{
 		id:        jobID,
-		expires:   time.Now().Add(2 * time.Duration(cfg.Interval) * time.Second),
+		expires:   time.Now().Add(time.Duration(cfg.Interval_system) * time.Second),
 		count:     nlines,
 		cancelled: make(chan bool),
 		server:    server,

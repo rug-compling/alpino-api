@@ -14,7 +14,9 @@ port = 11200
 
 tmp = "/tmp/alpiner"
 
+# werkelijke interval een minuut langer dan de interval gerapporteerd aan gebruiker
 interval = 300
+interval_system = 360
 
 workers = 10
 
