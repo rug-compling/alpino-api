@@ -77,6 +77,7 @@ done
 if [ "$1" = "-i" ]
 then
     ./alpiner -v config.toml
+    ./stop.bash
 else
     ./alpiner config.toml &> log/alpiner.out &
     ps -p `pgrep -f -u $USER 'alpiner|server_port=112(11|12|13|21|22|23)'`
