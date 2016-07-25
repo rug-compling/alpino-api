@@ -4,6 +4,8 @@ Dit voorbeeld draait Alpino zelf op de lokale server.
 
 Dit is niet geheel veilig voor in een productie-omgeving.
 
+Voor een client, zie: https://github.com/rug-compling/paqu/tree/master/src/pqalpino
+
 ## start
 
 Het script `start.bash` start een aantal versies van Alpino in
