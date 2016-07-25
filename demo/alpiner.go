@@ -196,6 +196,7 @@ func main() {
 
 		chLog <- fmt.Sprintf("Uptime: %v", time.Since(timestart))
 
+		time.Sleep(time.Second)
 		close(chLoggerExit) // signaal dat de logger moet stoppen
 		wgLogger.Wait()     // wacht tot de logger is gestopt
 
