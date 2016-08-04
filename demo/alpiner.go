@@ -405,9 +405,14 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
     "id": "%d",
     "interval": %d,
     "lines": %d,
-    "timeout": %d
-}
-`, status[202], jobID, cfg.Interval, lineno, timeout)
+    "timeout": %d`,
+		status[202], jobID, cfg.Interval, lineno, timeout)
+	if maxtokens > 0 {
+		fmt.Fprintf(w, `,
+    "maxtokens": %d`,
+			maxtokens)
+	}
+	fmt.Fprintln(w, "\n}")
 }
 
 func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {

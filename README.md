@@ -173,14 +173,15 @@ doc.1.p.1.s.2|Jij bestaat .
 
 Bij succes krijg je deze elementen terug:
 
-element    | type   |           |  omschrijving
------------|--------|-----------|----------
-`code`     | int    |           |`202`
-`status`   | string |           | `Accepted`
-`id`       | string |           | id van job
-`interval` | int    |           | tijd in seconden waarbinnen output opgevraagd moet worden voordat job wordt gecanceld
-`lines`    | int    | optioneel | aantal zinnen, eventueel na splitsen van lopende tekst in zinnen
-`timeout`  | int    | optioneel | door parser gebruikte timeout in seconden per zin
+element     | type   |           |  omschrijving
+------------|--------|-----------|----------
+`code`      | int    |           |`202`
+`status`    | string |           | `Accepted`
+`id`        | string |           | id van job
+`interval`  | int    |           | tijd in seconden waarbinnen output opgevraagd moet worden voordat job wordt gecanceld
+`lines`     | int    | optioneel | aantal zinnen, eventueel na splitsen van lopende tekst in zinnen
+`timeout`   | int    | optioneel | door parser gebruikte timeout in seconden per zin
+`maxtokens` | int    | optioneel | door parser gebruikt maximum aantal tokens per zin
 
 De waarde van `interval` is bij benadering. Als je ietsje over de tijd
 heen zit voordat je uitvoer opvraagd, dan is er niets aan de hand, maar
@@ -197,6 +198,9 @@ moment nog niet bekend is.
 Het element `timeout` kan ontbreken, bijvoorbeeld als de server geen
 vaste waarde gebruikt.
 
+Het element `maxtokens` kan ontbreken, bijvoorbeeld als client noch
+server een maximum heeft ingesteld.
+
 Voorbeeld uitvoer:
 
 ```json
@@ -206,7 +210,8 @@ Voorbeeld uitvoer:
     "id": "118587257602604880",
     "interval": 300,
     "lines": 2,
-    "timeout": 60
+    "timeout": 60,
+	"maxtokens": 100
 }
 ```
 
