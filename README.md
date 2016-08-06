@@ -407,5 +407,14 @@ Voorbeeld uitvoer:
     }
 }
 ```
-
 TODO: versie van Alpino: git commit id? datum?
+
+Wat `limits.jobs` betreft:
+
+* Overschrijding van de limiet kan leiden tot een ban van het IP-adres van de
+  client.
+
+Wat `limits.tokens` betreft:
+
+* De limiet kan door de client lager worden gezet, maar niet hoger.
+* Zinnen die te lang zijn resulteren in zins-status `skipped`.
