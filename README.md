@@ -150,7 +150,7 @@ Wat `timeout` betreft:
 Wat `parser` betreft:
 
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
- * Een onbekende waarde geeft een `501 Not Implemented`. (Of `400 Bad Request`?)
+ * Een onbekende waarde geeft een `501 Not Implemented`. (TODO: Of `400 Bad Request`?)
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
 Wat `maxtokens` betreft:
@@ -211,7 +211,7 @@ Voorbeeld uitvoer:
     "interval": 300,
     "lines": 2,
     "timeout": 60,
-	"maxtokens": 100
+    "maxtokens": 100
 }
 ```
 
@@ -396,10 +396,10 @@ Voorbeeld uitvoer:
         "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",
         "workers": 10,
         "jobs": 45,
-                "timeout_default": 60,
-                "timeout_max": 600,
-                "timeout_values": [ 20, 60, 180, 600 ],
-                "parsers": [ "qa" ]
+        "timeout_default": 60,
+        "timeout_max": 600,
+        "timeout_values": [ 20, 60, 180, 600 ],
+        "parsers": [ "qa" ]
     },
     "limits": {
         "jobs": 6,
@@ -408,4 +408,4 @@ Voorbeeld uitvoer:
 }
 ```
 
-TODO: ook uitvoer van aantal jobs voor alleen huidig IP-adres?
+TODO: versie van Alpino: git commit id? datum?
