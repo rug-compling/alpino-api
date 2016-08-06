@@ -52,7 +52,7 @@ poorten niet eerst sluit als het gekild wordt.
 ## voorbeeld
 
 ```sh
-curl -d '{"request": "tokenize", "lines": false, "label": "weer"}
+curl --data-binary '{"request": "tokenize", "lines": false, "label": "weer"}
 Vandaag & morgen
 
 Kans op onweersbuien
