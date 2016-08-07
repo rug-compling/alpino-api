@@ -38,7 +38,9 @@ De uitgangspunten van de huidige API zijn:
    kunnen worden, door meerdere werkers, mogelijk verdeeld over meerdere
    machines. Op het moment dat er maar één tekst verwerkt wordt wordt
    het werk verdeeld over alle werkers.
- * Flexibel, toepasbaar voor meerdere soorten tekst.
+ * Flexibel, toepasbaar voor meerdere soorten tekst, zoals doorlopende
+   tekst, tekst die al is opgedeeld in een zin per regel, wel of niet
+   getokeniseerd.
 
 ## Over de tokenizer en de parser
 
