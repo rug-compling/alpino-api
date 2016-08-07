@@ -8,7 +8,7 @@ Deze API wordt onder andere gebruikt door [PaQu](https://github.com/rug-compling
 
 Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 
-### TODO
+TODO:
 
  * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
  * Sommige elementen (`status`, `tokens`) worden in meerdere
@@ -16,6 +16,29 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
  * Metadata?
 
 Zie ook TODO's hieronder.
+
+## Motivatie
+
+Er waren al wel enkele Alpino-servers, maar geen met een publieke API.
+De functionaliteit van die servers is beperkt. De een geeft op een
+POST-request met een tekst de geparste zinnen direct terug in de
+response. Dat is alleen geschikt voor zeer kleine teksten. Een andere
+server verwerkt de toegestuurde tekst geheel offline, en het resultaat
+kan pas gedownload worden als de verwerking is afgerond. Beiden zijn
+niet geschikt voor een toepassing als
+[PaQu](https://github.com/rug-compling/paqu).
+
+De uitgangspunten van de huidige API zijn:
+
+ * Een API met duidelijk beschreven opties en verwacht gedrag.
+ * Geschikt voor de verwerking van kleine en zeer grote teksten, waarbij
+   ook met grote teksten de resultaten vanaf het begin incrementeel
+   opgevraagd kunnen worden, niet per se in de juiste volgorde.
+ * Een API voor een server waarachter teksten in parallel verwerkt
+   kunnen worden, door meerdere werkers, mogelijk verdeeld over meerdere
+   machines. Op het moment dat er maar één tekst verwerkt wordt wordt
+   het werk verdeeld over alle werkers.
+ * Flexibel, toepasbaar voor meerdere soorten tekst.
 
 ## Over de tokenizer en de parser
 
@@ -98,7 +121,8 @@ TODO: Moet er in de API een *back-off policy* beschreven worden voor status
 
 ### Request: parse
 
-Doel: zend een tekst naar de server om te laten parsen, zonodig eerst tokeniseren.
+Doel: Zend een tekst naar de server om te laten parsen, zonodig eerst
+tokeniseren. De tekst **moet** gecodeerd zijn in **UTF-8**.
 
 Parameters, allen optioneel:
 
@@ -217,7 +241,8 @@ Voorbeeld uitvoer:
 
 ### Request: tokenize
 
-Doel: zend een tekst naar de server om te laten tokeniseren.
+Doel: Zend een tekst naar de server om te laten tokeniseren. De tekst
+**moet** gecodeerd zijn in **UTF-8**.
 
 Parameters, allen optioneel:
 
@@ -261,7 +286,7 @@ demo.p.1.s.2|Jij bestaat .
 
 ### Request: output
 
-Doel: opvragen van (deel van) de uitvoer van een job, momenteel alleen
+Doel: Opvragen van (deel van) de uitvoer van een job, momenteel alleen
 jobs van type `parse`.
 
 Parameter, verplicht:
@@ -321,7 +346,7 @@ Voorbeeld uitvoer:
 
 ### Request: cancel
 
-Doel: een lopende job afbreken.
+Doel: Een lopende job afbreken.
 
 Jobs worden ook afgebroken als de timeout is verstreken.
 
@@ -351,7 +376,7 @@ Voorbeeld uitvoer:
 
 ### Request: info
 
-Doel: details over de huidige status van de server opvragen.
+Doel: Details over de huidige status van de server opvragen.
 
 Geen parameters
 
