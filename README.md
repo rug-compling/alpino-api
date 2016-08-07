@@ -122,7 +122,7 @@ TODO: Moet er in de API een *back-off policy* beschreven worden voor status
 ### Request: parse
 
 Doel: Zend een tekst naar de server om te laten parsen, zonodig eerst
-tokeniseren. De tekst **moet** gecodeerd zijn in **UTF-8**.
+tokeniseren. De tekst **moet** gecodeerd zijn in **UTF-8**, zonder BOM.
 
 Parameters, allen optioneel:
 
@@ -242,7 +242,7 @@ Voorbeeld uitvoer:
 ### Request: tokenize
 
 Doel: Zend een tekst naar de server om te laten tokeniseren. De tekst
-**moet** gecodeerd zijn in **UTF-8**.
+**moet** gecodeerd zijn in **UTF-8**, zonder BOM.
 
 Parameters, allen optioneel:
 
