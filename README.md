@@ -10,10 +10,20 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 
 TODO:
 
- * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
- * Sommige elementen (`status`, `tokens`) worden in meerdere
-   betekenissen gebruikt. Hernoemen?
+ * Sommige elementen worden in meerdere betekenissen gebruikt. Hernoemen?
+   * `status` → `status` + `result`? `parsed`?
+   * `maxtokens` → `max_tokens`
+   * `output` → ??
+   * `lines` → `has_lines` + `number_of_lines` ? `line_count`? `lines_count`?
+   * `tokens` → `has_tokens`? `tokenized`? + `max_tokens`
+   * `jobs` → `total_running_jobs` + `max_jobs`
+   * `escape` → `escape_level`
+   * `label` → `label` + `label_prefix`
+   * `lineno` → `line_number`
+   * `xml` → `alpino_ds`?
+   * `log` → `message`???
  * Metadata?
+ * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
 
 Zie ook TODO's hieronder.
 
@@ -326,7 +336,7 @@ Elementen in een item in `batch`:
 element    | type   | voorwaarde | omschrijving
 -----------|--------|------------|-------------
 `status`   | string |            | `ok` of `fail` of `skipped`
-`lineno`   | int    |            | zinnummer
+`lineno`   | int    |            | zinnummer: eerste is nummer 1
 `label`    | string | indien aanwezig | label van de zin
 `sentence` | string |            | de getokeniseerde zin
 `xml`      | string | status: ok | de parse van de zin
