@@ -1,4 +1,4 @@
-# Alpino API versie 0.1
+# Alpino API versie 0.2
 
 Een API voor een Alpino-server.
 
@@ -10,19 +10,6 @@ Deze API is nog in ontwikkeling. Meedenkers zijn welkom.
 
 TODO:
 
- * Sommige elementen worden in meerdere betekenissen gebruikt. Hernoemen?
-   * `status` → `status` + `result`? `parsed`?
-   * `maxtokens` → `max_tokens`
-   * `output` → ??
-   * `lines` → `has_lines` + `number_of_lines` ? `line_count`? `lines_count`?
-   * `tokens` → `has_tokens`? `tokenized`? + `max_tokens`
-   * `jobs` → `total_running_jobs` + `max_jobs`
-   * `escape` → `escape_level`
-   * `label` → `label` + `label_prefix`
-   * `lineno` → `line_number`
-   * `xml` → `alpino_ds`?
-   * `log` → `message`???
- * Metadata?
  * Dit vertalen in het Engels? Beoogde gebruikers begrijpen Nederlands.
 
 Zie ook TODO's hieronder.
@@ -126,8 +113,7 @@ code | status                  | omschrijving
 501  | `Not Implemented`       | er wordt een optie gevraagd die niet is geïmplementeerd
 503  | `Service Unavailable`   | server is overbelast, probeer later opnieuw
 
-TODO: Moet er in de API een *back-off policy* beschreven worden voor status
-`503`, of is dat aan degene die de API implementeert?
+De API definieert geen *back-off policy* voor status 503.
 
 ## Lijst van requests
 
@@ -138,33 +124,47 @@ tokeniseren. De tekst **moet** gecodeerd zijn in **UTF-8**, zonder BOM.
 
 Parameters, allen optioneel:
 
-element         | type   | default  | voorwaarde   | omschrijving
-----------------|--------|----------|--------------|------------------------
-`lines`         | bool   | `false`  |              | true: één zin per regel; false: doorlopende tekst
-`tokens`        | bool   | `false`  | lines: true  | zinnen zijn getokeniseerd
-`escape`        | string | `"half"` | tokens: true | escape van special tekens
-`label`         | string | `"doc"`  | lines: false | prefix voor labels
-`timeout`       | int    | `0`      |              | timeout in seconden voor parsen van één zin
-`parser`        | string | `""`     |              | gebruik alternatieve parser
-`maxtokens`     | int    | `0`      |              | skip zinnen die meer dan dit aantal tokens hebben
+element      | type   | default    | omschrijving
+-------------|--------|------------|------------------------
+`data_type`  | string | `text doc` | soort data: zie onder
+`timeout`    | int    | `0`        | timeout in seconden voor parsen van één zin
+`parser`     | string | `""`       | gebruik alternatieve parser
+`max_tokens` | int    | `0`        | skip zinnen die meer dan dit aantal tokens hebben
 
-Wat `lines` betreft, indien `true`:
+Wat `data_type` betreft:
+
+Dit is een type-aanduiding, eventueel gevolgd door een of meer opties,
+alles gesplitst door spaties.
+
+type    | omschrijving
+--------|--------------------------------------------------------
+`text`  | de data bestaat uit doorlopende tekst
+`lines` | de data bestaat één zin per regel, met of zonder labels
+
+Naast de types `text` en `lines` kan een server andere types
+ondersteunen. Deze types moeten vermeld zijn in `extra_types` als
+resultaat van een `info`-request.
+
+Voor `data_type` is `text`:
+
+ * Kan gevolgd worden door de tekst prefix die gebruikt wordt als begin
+   van gegenereerde labels. Default: `doc`
+ * TODO: specificatie voor exact gedrag van `partok`: opties `-i` en `-t`
+
+Voor `data_type` is `lines`:
 
  * Een regel die met een `%` begint wordt beschouwd als commentaarregel,
    en genegeerd.
  * Als een regel (zonder `%` aan het begin) een `|` bevat, dan wordt dat
    geïnterpreteerd als scheidingsteken tussen label en zin.
-
-In beide gevallen kun je een `|` aan het begin van de regel toevoegen om
-de speciale interpretatie van verdere `|` en `%` te voorkomen.
-
-Wat `escape` betreft:
-
-Alleen van toepassing op invoer die al bestaat uit getokeniseerde
-regels.
+ * De optie `tokens` geeft aan dat de zinnen al gesplitst zijn in
+   tokens. Default: de zinnen zijn nog niet getokeniseerd.
+ * In combinatie met de optie `tokens` kan als optie een escape-level
+   meegegeven worden. Dit is een van `none`, `half` en `full`. Default:
+   `half`
 
 In onderstaande tabel staat hoe bepaalde tokens (eerste kolom) worden
-geïnterpreteerd voor verschillende waardes van `escape`.
+geïnterpreteerd voor verschillende escape-levels.
 
 token  | `none`   | `half` | `full`
 -------|----------|--------|-------
@@ -189,7 +189,7 @@ Wat `parser` betreft:
  * Een onbekende waarde geeft een `501 Not Implemented`. (TODO: Of `400 Bad Request`?)
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
-Wat `maxtokens` betreft:
+Wat `max_tokens` betreft:
 
  * De waarde 0 betekent geen limiet.
  * Als de waarde groter is dan de limiet die de server heeft ingesteld,
@@ -200,8 +200,7 @@ Voorbeeld aanroep, tekst volgt na json-object:
 ```json
 {
     "request": "parse",
-    "lines": true,
-    "tokens": true
+    "data_type": "lines tokens none"
 }
 doc.1.p.1.s.1|Ik besta .
 doc.1.p.1.s.2|Jij bestaat .
@@ -209,33 +208,29 @@ doc.1.p.1.s.2|Jij bestaat .
 
 Bij succes krijg je deze elementen terug:
 
-element     | type   |           |  omschrijving
-------------|--------|-----------|----------
-`code`      | int    |           |`202`
-`status`    | string |           | `Accepted`
-`id`        | string |           | id van job
-`interval`  | int    |           | tijd in seconden waarbinnen output opgevraagd moet worden voordat job wordt gecanceld
-`lines`     | int    | optioneel | aantal zinnen, eventueel na splitsen van lopende tekst in zinnen
-`timeout`   | int    | optioneel | door parser gebruikte timeout in seconden per zin
-`maxtokens` | int    | optioneel | door parser gebruikt maximum aantal tokens per zin
+element           | type   |  omschrijving
+------------------|--------|----------
+`code`            | int    |`202`
+`status`          | string | `Accepted`
+`id`              | string | id van job
+`interval`        | int    | tijd in seconden waarbinnen output opgevraagd moet worden voordat job wordt gecanceld
+`number_of_lines` | int    | aantal zinnen, eventueel na splitsen van lopende tekst in zinnen
+`timeout`         | int    | door parser gebruikte timeout in seconden per zin
+`max_tokens`      | int    | door parser gebruikt maximum aantal tokens per zin
 
 De waarde van `interval` is bij benadering. Als je ietsje over de tijd
 heen zit voordat je uitvoer opvraagd, dan is er niets aan de hand, maar
-als je fors over de tijd heen gaat, dan wordt de job op de server gecanceld.
+als je ruim over de tijd heen gaat, dan wordt de job op de server
+gecanceld.
 
 Je mag ook eerder resultaten opvragen, bijvoorbeeld als je maar een of
 twee zinnen laat parsen. Een goede strategie is om de eerste batch snel
 op te vragen, en de wachttijd voor elke volgende batch te verlengen tot
 je aan de waarde van `interval` zit.
 
-Het element `lines` kan ontbreken, bijvoorbeeld als de waarde op dit
-moment nog niet bekend is.
-
-Het element `timeout` kan ontbreken, bijvoorbeeld als de server geen
-vaste waarde gebruikt.
-
-Het element `maxtokens` kan ontbreken, bijvoorbeeld als client noch
-server een maximum heeft ingesteld.
+Wat betreft `number_of_lines`, `timeout` en `max_tokes`: de waarde `-1`
+geeft aan dat de werkelijke waarde om een of andere reden niet gegeven
+kan worden.
 
 Voorbeeld uitvoer:
 
@@ -245,9 +240,9 @@ Voorbeeld uitvoer:
     "status": "Accepted",
     "id": "118587257602604880",
     "interval": 300,
-    "lines": 2,
+    "number_of_lines": 2,
     "timeout": 60,
-    "maxtokens": 100
+    "max_tokens": 100
 }
 ```
 
@@ -256,14 +251,31 @@ Voorbeeld uitvoer:
 Doel: Zend een tekst naar de server om te laten tokeniseren. De tekst
 **moet** gecodeerd zijn in **UTF-8**, zonder BOM.
 
-Parameters, allen optioneel:
+Parameter, optioneel:
 
-element          | type   | default  | voorwaarde   | omschrijving
------------------|--------|----------|--------------|------------------------
-`lines`          | bool   | `false`  |              | true: één zin per regel; false: doorlopenede tekst
-`label`          | string | `"doc"`  | lines: false | prefix voor labels
+element      | type   | default    | omschrijving
+-------------|--------|------------|------------------------
+`data_type`  | string | `text doc` | soort data: zie onder
 
-Wat `lines` betreft, indien `true`:
+Soort data is een type-aanduiding, eventueel gevolgd door een of meer
+opties, alles gesplitst door spaties.
+
+type    | omschrijving
+--------|--------------------------------------------------------
+`text`  | de data bestaat uit doorlopende tekst
+`lines` | de data bestaat één zin per regel, met of zonder labels
+
+Naast de types `text` en `lines` kan een server andere types
+ondersteunen. Deze types moeten vermeld zijn in `extra_types` als
+resultaat van een `info`-request.
+
+Voor `data_type` is `text`:
+
+ * Kan gevolgd worden door de tekst prefix die gebruikt wordt als begin
+   van gegenereerde labels. Default: `doc`
+ * TODO: specificatie voor exact gedrag van `partok`: opties `-i` en `-t`
+
+Voor `data_type` is `lines`:
 
  * Een regel die met een `%` begint wordt beschouwd als
    commentaarregel, en wordt gekopieerd naar de uitvoer zonder
@@ -275,14 +287,12 @@ Wat `lines` betreft, indien `true`:
 In beide gevallen kun je een `|` aan het begin van de regel toevoegen om
 de speciale interpretatie van verdere `|` en `%` te voorkomen.
 
-
 Voorbeeld aanroep, tekst volgt na json-object:
 
 ```json
 {
     "request": "tokenize",
-    "lines": false,
-    "label": "demo"
+    "data_type": "text demo"
 }
 Ik besta. Jij bestaat.
 ```
@@ -333,14 +343,23 @@ volgende batch op te vragen.
 
 Elementen in een item in `batch`:
 
-element    | type   | voorwaarde | omschrijving
------------|--------|------------|-------------
-`status`   | string |            | `ok` of `fail` of `skipped`
-`lineno`   | int    |            | zinnummer: eerste is nummer 1
-`label`    | string | indien aanwezig | label van de zin
-`sentence` | string |            | de getokeniseerde zin
-`xml`      | string | status: ok | de parse van de zin
-`log`      | string |            | error-uitvoer van de parser, of van een andere fout
+element          | type   | voorwaarde | omschrijving
+-----------------|--------|------------|-------------
+`error`          | int    |            | `0`, `1` of `2`
+`line_number`    | int    |            | zinnummer: eerste is nummer 1
+`label`          | string | indien aanwezig | label van de zin
+`sentence`       | string |            | de getokeniseerde zin
+`alpino_ds`      | string | error: 0   | de parse van de zin
+`log`            | string |            | error-uitvoer van de parser, of van een andere fout
+`parser_build`   | string | optioneel  | indien bekend, en anders dan is vermeld door een `info`-request
+
+Waardes voor `error`:
+
+waarde | betekenis
+-------|----------
+0      | alles OK
+1      | zin overgeslagen
+2      | interne serverfout
 
 Voorbeeld uitvoer:
 
@@ -350,8 +369,8 @@ Voorbeeld uitvoer:
     "status": "OK",
     "finished": true,
     "batch": [
-{"status":"ok","lineno":2,"label":"doc.1.p.1.s.2","sentence":"jij bestaat","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,je,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"jij\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"je\" persoon=\"2v\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,2v,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"jij\" sense=\"jij\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"jij\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg3,intransitive)\" id=\"3\" infl=\"sg3\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,met-t)\" pt=\"ww\" pvagr=\"met-t\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"bestaat\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">jij bestaat</sentence>\n</alpino_ds>\n","log":""},
-{"status":"ok","lineno":1,"label":"doc.1.p.1.s.1","sentence":"ik besta","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,fir,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"ik\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"fir\" persoon=\"1\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,1,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"ik\" sense=\"ik\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"ik\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg1,intransitive)\" id=\"3\" infl=\"sg1\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,ev)\" pt=\"ww\" pvagr=\"ev\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"besta\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">ik besta</sentence>\n</alpino_ds>\n","log":""}
+{"error":0,"lineno":2,"label":"doc.1.p.1.s.2","sentence":"jij bestaat","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,je,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"jij\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"je\" persoon=\"2v\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,2v,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"jij\" sense=\"jij\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"jij\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg3,intransitive)\" id=\"3\" infl=\"sg3\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,met-t)\" pt=\"ww\" pvagr=\"met-t\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"bestaat\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">jij bestaat</sentence>\n</alpino_ds>\n","log":""},
+{"error":0,"lineno":1,"label":"doc.1.p.1.s.1","sentence":"ik besta","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,fir,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"ik\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"fir\" persoon=\"1\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,1,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"ik\" sense=\"ik\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"ik\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg1,intransitive)\" id=\"3\" infl=\"sg1\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,ev)\" pt=\"ww\" pvagr=\"ev\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"besta\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">ik besta</sentence>\n</alpino_ds>\n","log":""}
     ]
 }
 ```
@@ -402,22 +421,22 @@ Voorbeeld aanroep:
 
 Resultaat:
 
-element           | type             |           | omschrijving
-------------------|------------------|-----------|------------------
-`api`             | object           |           | API-versie gebruikt door deze server
-— `major`           | int            |           | major version number
-— `minor`           | int            |           | minor version number
-`server`         | object            | optioneel | gegevens over server
-— `about`           | string         | optioneel | vrije tekst, beschrijving, contact-info, etc.
-— `workers`         | int            | optioneel | aantal werkers op dit moment, bezig of wachtend
-— `jobs`            | int            | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
-— `timeout_default` | int            | optioneel | default timeout in seconden voor parsen van één zin
-— `timeout_max`     | int            | optioneel | de maximale timeout in seconden voor parsen van één zin
-— `timeout_values`  | [ int ... ]    | optioneel | ondersteunde timeouts voor parsen van één zin
-— `parsers`         | [ string ... ] | optioneel | lijst met alternatieve parsers
-`limits`         | object            |           | regels voor de gebruiker
-— `jobs`            | int            |           | maximum aantal gelijktijdige jobs per IP-adres
-— `tokens`          | int            |           | maximum lengte van een zin in tokens, 0 is geen limiet
+element              | type           |           | omschrijving
+---------------------|----------------|-----------|------------------
+`api_major`          | int            |           | API major version number
+`api_minor`          | int            |           | API minor version number
+`parser_build`       | string         | optioneel | Alpino-versie van de parser
+`tokenizer_build`    | string         | optioneel | Alpino-versie van de tokenizer
+`about`              | string         | optioneel | vrije tekst, beschrijving, contact-info, etc.
+`workers`            | int            | optioneel | aantal werkers op dit moment, bezig of wachtend
+`total_running_jobs` | int            | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
+`timeout_default`    | int            | optioneel | default timeout in seconden voor parsen van één zin
+`timeout_max`        | int            | optioneel | de maximale timeout in seconden voor parsen van één zin
+`timeout_values`     | [ int ... ]    | optioneel | ondersteunde timeouts voor parsen van één zin
+`parsers`            | [ string ... ] | optioneel | lijst met alternatieve parsers
+`max_jobs`           | int            |           | maximum aantal gelijktijdige jobs per IP-adres
+`max_tokens`         | int            | optioneel | maximum lengte van een zin in tokens, 0 is geen limiet
+`extra_types`        | [ string ... ] | optioneel | extra types voor `data_type`
 
 Voorbeeld uitvoer:
 
@@ -425,34 +444,38 @@ Voorbeeld uitvoer:
 {
     "code": 200,
     "status": "OK",
-    "api": {
-        "major": 0,
-        "minor": 1
-    },
-    "server": {
-        "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",
-        "workers": 10,
-        "jobs": 45,
-        "timeout_default": 60,
-        "timeout_max": 600,
-        "timeout_values": [ 20, 60, 180, 600 ],
-        "parsers": [ "qa" ]
-    },
-    "limits": {
-        "jobs": 6,
-        "tokens": 100
-    }
+    "api_major": 0,
+    "api_minor": 1,
+	"parser_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
+	"tokenizer_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
+    "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",
+    "workers": 10,
+    "total_running_jobs": 45,
+    "timeout_default": 60,
+    "timeout_max": 600,
+    "timeout_values": [ 20, 60, 180, 600 ],
+    "parsers": [ "qa" ],
+    "max_jobs": 6,
+    "maxtokens": 100,
+    "extra_types": [ ]
 }
 ```
-TODO: versie van Alpino: git commit id? datum? Probleem: bij gebruik van
-meerdere workers op verschillende sites kan de versie per zin verschillen.
 
-Wat `limits.jobs` betreft:
+Wat `parser_build` en `tokenizer_build` betreft:
 
-* Overschrijding van de limiet kan leiden tot een ban van het IP-adres van de
-  client.
+ * Dit is de tekst uit het bestand `$ALPINO_HOME/version`. 
+ * Parsen en tokeniseren hoeft niet op dezelfde machine te gebeuren,
+   vandaar dat ze apart worden gegeven.
+ * Parsen kan op meerdere machines gebeuren, met verschillende versies
+   van Alpino. Afwijken versies kunnen vermeld worden per zin in een
+   `batch`.
 
-Wat `limits.tokens` betreft:
+Wat `max_jobs` betreft:
 
-* De limiet kan door de client lager worden gezet, maar niet hoger.
-* Zinnen die te lang zijn resulteren in zins-status `skipped`.
+ * Overschrijding van de limiet kan leiden tot een ban van het IP-adres van de
+   client.
+
+Wat `max_tokens` betreft:
+
+ * De limiet kan door de client lager worden gezet, maar niet hoger.
+ * Zinnen die te lang zijn resulteren in zins-status `skipped`.

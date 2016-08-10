@@ -37,7 +37,7 @@ import (
 
 const (
 	VersionMajor = 0
-	VersionMinor = 1
+	VersionMinor = 2
 )
 
 //. Types voor configuratie van de server ......................
@@ -55,6 +55,7 @@ type Config struct {
 	Timeout_default int
 	Timeout_max     int
 	Timeout_values  []int
+	Alpino_build    string
 	Alpino          []AlpinoT
 }
 
@@ -67,15 +68,16 @@ type AlpinoT struct {
 //. Type voor API-request ......................................
 
 type Request struct {
-	Request   string
-	Id        string // output, cancel
-	Lines     bool   // parse, tokenize
-	Tokens    bool   // parse
-	Escape    string // parse
-	Label     string // parse, tokenize
-	Timeout   int    // parse
-	Parser    string // parse
-	Maxtokens int    // parse
+	Request    string
+	Id         string // output, cancel
+	Data_type  string // parse, tokenize
+	Timeout    int    // parse
+	Parser     string // parse
+	Max_tokens int    // parse
+	lines      bool   // parse, tokenize
+	tokens     bool   // parse
+	escape     string // parse
+	label      string // parse, tokenize
 }
 
 //. Types voor API-request=parse ...............................
@@ -327,20 +329,49 @@ func jsonHandler(w http.ResponseWriter, r *http.Request) {
 
 func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 
-	// defaults
-	if req.Label == "" {
-		req.Label = "doc"
+	words := strings.Fields(req.Data_type)
+	if len(words) == 0 {
+		words = []string{"text"}
 	}
-	if !req.Lines {
-		req.Tokens = false
-	}
-	if req.Tokens {
-		if req.Escape != "none" && req.Escape != "full" {
-			req.Escape = "half"
+	switch words[0] {
+	case "text":
+		switch len(words) {
+		case 1:
+			req.label = "doc"
+		case 2:
+			req.label = words[1]
+		default:
+			x(w, fmt.Errorf("Too many options for data_type \"text\""), 400)
+			return
 		}
-	} else {
-		// Gebruik tokenizer van Alpino. Die doet al full escape.
-		req.Escape = "none"
+	case "lines":
+		req.lines = true
+		for _, word := range words[1:] {
+			switch word {
+			case "tokens":
+				req.tokens = true
+			case "none", "half", "full":
+				req.escape = word
+			default:
+				x(w, fmt.Errorf("Unknown option %q for data_type \"lines\"", word), 400)
+				return
+			}
+		}
+		if req.tokens {
+			if req.escape == "" {
+				req.escape = "half"
+			}
+		} else {
+			if req.escape != "" {
+				x(w, fmt.Errorf("Option %q for data_type \"lines\" also needs option \"tokens\"", req.escape), 400)
+				return
+			}
+			// Gebruik tokenizer van Alpino. Die doet al full escape.
+			req.escape = "none"
+		}
+	default:
+		x(w, fmt.Errorf("Unknown data_type %q", words[0]), 400)
+		return
 	}
 
 	timeout := cfg.Timeout_default
@@ -392,35 +423,52 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	}
 
 	var maxtokens int
-	if req.Maxtokens > 0 && cfg.Max_tokens > 0 {
-		maxtokens = min(req.Maxtokens, cfg.Max_tokens)
+	if req.Max_tokens > 0 && cfg.Max_tokens > 0 {
+		maxtokens = min(req.Max_tokens, cfg.Max_tokens)
 	} else {
-		maxtokens = max(req.Maxtokens, cfg.Max_tokens)
+		maxtokens = max(req.Max_tokens, cfg.Max_tokens)
 	}
-	go doJob(jobID, lineno, server, maxtokens, req.Escape)
+	go doJob(jobID, lineno, server, maxtokens, req.escape)
 
 	fmt.Fprintf(w, `{
     "code": 202,
     "status": %q,
     "id": "%d",
     "interval": %d,
-    "lines": %d,
-    "timeout": %d`,
-		status[202], jobID, cfg.Interval, lineno, timeout)
-	if maxtokens > 0 {
-		fmt.Fprintf(w, `,
-    "maxtokens": %d`,
-			maxtokens)
-	}
-	fmt.Fprintln(w, "\n}")
+    "number_of_lines": %d,
+    "timeout": %d,
+    "max_tokens": %d
+}
+`,
+		status[202], jobID, cfg.Interval, lineno, timeout, maxtokens)
 }
 
 func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 
-	// defaults
-	req.Tokens = false
-	if req.Label == "" {
-		req.Label = "doc"
+	words := strings.Fields(req.Data_type)
+	if len(words) == 0 {
+		words = []string{"text"}
+	}
+	switch words[0] {
+	case "text":
+		switch len(words) {
+		case 1:
+			req.label = "doc"
+		case 2:
+			req.label = words[1]
+		default:
+			x(w, fmt.Errorf("Too many options for data_type \"text\""), 400)
+			return
+		}
+	case "lines":
+		req.lines = true
+		if len(words) > 1 {
+			x(w, fmt.Errorf("Too many options for data_type \"lines\""), 400)
+			return
+		}
+	default:
+		x(w, fmt.Errorf("Unknown data_type %q", words[0]), 400)
+		return
 	}
 
 	pr, pw := io.Pipe()
@@ -534,7 +582,7 @@ func reqOutput(w http.ResponseWriter, req Request) {
 			full := filepath.Join(dir, filename)
 			fp, err := os.Open(full)
 			if err != nil {
-				fmt.Fprintf(w, `{"status":"internal","log":%q}`, err.Error())
+				fmt.Fprintf(w, `{"error":2,"log":%q}`, err.Error())
 			} else {
 				io.Copy(w, fp)
 				fp.Close()
@@ -605,19 +653,20 @@ func reqInfo(w http.ResponseWriter) {
 	fmt.Fprintf(w, `{
     "code": 200,
     "status": "OK",
-    "api": {
-        "major": %d,
-        "minor": %d
-    },
-    "server": {
-        "about": %q,
-        "workers": %d,
-        "jobs": %d,
-        "timeout_default": %d,
-        "timeout_max": %d,
-        "timeout_values": [`,
+    "api_major": %d,
+    "api_minor": %d,
+    "parser_build": %q,
+    "tokenizer_build": %q,
+    "about": %q,
+    "workers": %d,
+    "total_running_jobs": %d,
+    "timeout_default": %d,
+    "timeout_max": %d,
+    "timeout_values": [`,
 		VersionMajor,
 		VersionMinor,
+		cfg.Alpino_build,
+		cfg.Alpino_build,
 		cfg.About,
 		cfg.Workers,
 		njobs,
@@ -629,18 +678,16 @@ func reqInfo(w http.ResponseWriter) {
 		p = ","
 	}
 	fmt.Fprintf(w, ` ],
-        "parsers": [`)
+    "parsers": [`)
 	p = ""
 	for _, t := range parsers {
 		fmt.Fprintf(w, "%s %q", p, t)
 		p = ","
 	}
-	fmt.Fprintf(w, ` ]
-    },
-    "limits": {
-        "jobs": %d,
-        "tokens": %d
-    }
+	fmt.Fprintf(w, ` ],
+    "max_jobs": %d,
+    "max_tokens": %d,
+    "extra_types": [ ]
 }
 `,
 		cfg.Max_jobs, cfg.Max_tokens)
@@ -677,7 +724,7 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 	var tokerr1, tokerr2, tokerr3, tokerr4 error
 	var raw bool
 
-	if req.Lines && req.Tokens {
+	if req.lines && req.tokens {
 
 		//
 		// tekst is al getokeniseerd
@@ -694,14 +741,14 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 		//
 
 		// kies externe tokenizer voor de shell
-		if req.Lines {
+		if req.lines {
 			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/tokenize_no_breaks.sh")
 		} else {
-			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -t '"+shellEscape(req.Label)+".p.%p.s.%l|'")
+			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -t '"+shellEscape(req.label)+".p.%p.s.%l|'")
 		}
 
 		// setup van stdin en stdout voor de shell
-		if !req.Lines {
+		if !req.lines {
 			// lines: false
 
 			//
@@ -1080,7 +1127,7 @@ WORKER:
 				job.mu.Lock()
 				fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 				if err == nil {
-					fmt.Fprintf(fp, `{"status":"skipped","lineno":%d,`, task.lineno)
+					fmt.Fprintf(fp, `{"error":1,"line_number":%d,`, task.lineno)
 					if task.label != "" {
 						fmt.Fprintf(fp, `"label":%q,`, task.label)
 					}
@@ -1094,7 +1141,7 @@ WORKER:
 		}
 
 		var log, xml string
-		status := "ok"
+		status := 0
 		var conn net.Conn
 		var err error
 		for i := 0; i < 10; i++ {
@@ -1124,7 +1171,7 @@ WORKER:
 		}
 
 		if x := strings.TrimSpace(xml); !strings.HasSuffix(x, "</alpino_ds>") {
-			status = "fail"
+			status = 2
 			log = xml
 			xml = ""
 		}
@@ -1135,13 +1182,13 @@ WORKER:
 			job.mu.Lock()
 			fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 			if err == nil {
-				fmt.Fprintf(fp, `{"status":%q,"lineno":%d,`, status, task.lineno)
+				fmt.Fprintf(fp, `{"error":%d,"line_number":%d,`, status, task.lineno)
 				if task.label != "" {
 					fmt.Fprintf(fp, `"label":%q,`, task.label)
 				}
 				fmt.Fprintf(fp, `"sentence":%q,`, task.line)
 				if xml != "" {
-					fmt.Fprintf(fp, `"xml":%q,`, xml)
+					fmt.Fprintf(fp, `"alpino_ds":%q,`, xml)
 				}
 				fmt.Fprintf(fp, `"log":%q}`, log)
 				err = fp.Close()
