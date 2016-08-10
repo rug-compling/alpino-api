@@ -353,13 +353,15 @@ element          | type   | voorwaarde | omschrijving
 `log`            | string |            | error-uitvoer van de parser, of van een andere fout
 `parser_build`   | string | optioneel  | indien bekend, en anders dan is vermeld door een `info`-request
 
+TODO: iets anders verzinnen voor `error`
+
 Waardes voor `error`:
 
 waarde | betekenis
 -------|----------
 0      | alles OK
 1      | zin overgeslagen
-2      | interne serverfout
+2      | interne serverfout / zin kon niet geparst worden
 
 Voorbeeld uitvoer:
 
