@@ -444,7 +444,8 @@ Voorbeeld uitvoer:
     }
 }
 ```
-TODO: versie van Alpino: git commit id? datum?
+TODO: versie van Alpino: git commit id? datum? Probleem: bij gebruik van
+meerdere workers op verschillende sites kan de versie per zin verschillen.
 
 Wat `limits.jobs` betreft:
 
