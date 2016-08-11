@@ -1,4 +1,4 @@
-# Alpino API versie 0.3
+# Alpino API versie 0.4
 
 Een API voor een Alpino-server.
 
@@ -417,8 +417,7 @@ Resultaat:
 
 element              | type           |           | omschrijving
 ---------------------|----------------|-----------|------------------
-`api_major`          | int            |           | API major version number
-`api_minor`          | int            |           | API minor version number
+`api_version`        | [ int, int ]   |           | API major en minor version number
 `parser_build`       | string         | optioneel | Alpino-versie van de parser
 `tokenizer_build`    | string         | optioneel | Alpino-versie van de tokenizer
 `about`              | string         | optioneel | vrije tekst, beschrijving, contact-info, etc.
@@ -438,8 +437,7 @@ Voorbeeld uitvoer:
 {
     "code": 200,
     "status": "OK",
-    "api_major": 0,
-    "api_minor": 1,
+    "api_version": [ 0, 4 ],
 	"parser_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
 	"tokenizer_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
     "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",

@@ -37,7 +37,7 @@ import (
 
 const (
 	VersionMajor = 0
-	VersionMinor = 2
+	VersionMinor = 4
 )
 
 //. Types voor configuratie van de server ......................
@@ -653,8 +653,7 @@ func reqInfo(w http.ResponseWriter) {
 	fmt.Fprintf(w, `{
     "code": 200,
     "status": "OK",
-    "api_major": %d,
-    "api_minor": %d,
+    "api_version": [ %d, %d ],
     "parser_build": %q,
     "tokenizer_build": %q,
     "about": %q,
