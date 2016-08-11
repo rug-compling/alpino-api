@@ -30,10 +30,6 @@ max_jobs = 6
 
 max_tokens = 100
 
-# tekst uit bestand $ALPINO_HOME/version
-# gelijk voor tokenizer en parser
-alpino_build = "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus"
-
 [[alpino]]
 server = "127.0.0.1:11211"
 timeout = 20

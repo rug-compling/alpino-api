@@ -55,7 +55,6 @@ type Config struct {
 	Timeout_default int
 	Timeout_max     int
 	Timeout_values  []int
-	Alpino_build    string
 	Alpino          []AlpinoT
 }
 
@@ -142,9 +141,19 @@ var (
 		503: "Service Unavailable",
 	}
 
+	alpino_build string
+
 	// Hoe lang is de server in de lucht?
 	timestart = time.Now()
 )
+
+//. init .......................................................
+
+func init() {
+	data, err := ioutil.ReadFile(filepath.Join(os.Getenv("ALPINO_HOME"), "version"))
+	util.CheckErr(err)
+	alpino_build = strings.TrimSpace(string(data))
+}
 
 //. main .......................................................
 
@@ -664,8 +673,8 @@ func reqInfo(w http.ResponseWriter) {
     "timeout_values": [`,
 		VersionMajor,
 		VersionMinor,
-		cfg.Alpino_build,
-		cfg.Alpino_build,
+		alpino_build,
+		alpino_build,
 		cfg.About,
 		cfg.Workers,
 		njobs,
