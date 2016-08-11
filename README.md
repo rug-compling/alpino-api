@@ -1,4 +1,4 @@
-# Alpino API versie 0.2
+# Alpino API versie 0.3
 
 Een API voor een Alpino-server.
 
@@ -147,9 +147,11 @@ resultaat van een `info`-request.
 
 Voor `data_type` is `text`:
 
- * Kan gevolgd worden door de tekst prefix die gebruikt wordt als begin
+ * Kan gevolgd worden door een *prefix* die gebruikt wordt als begin
    van gegenereerde labels. Default: `doc`
- * TODO: specificatie voor exact gedrag van `partok`: opties `-i` en `-t`
+ * Tokenisatie gebeurt door het programma
+   `$ALPINO_HOME/Tokenization/partok` met standaardwaarde voor optie
+   `-i` en de waarde *prefix*`.p.%p.s.%l|` voor de optie `-t`.
 
 Voor `data_type` is `lines`:
 
@@ -343,25 +345,15 @@ volgende batch op te vragen.
 
 Elementen in een item in `batch`:
 
-element          | type   | voorwaarde | omschrijving
------------------|--------|------------|-------------
-`error`          | int    |            | `0`, `1` of `2`
-`line_number`    | int    |            | zinnummer: eerste is nummer 1
+element          | type   | voorwaarde      | omschrijving
+-----------------|--------|-----------------|-------------
+`line_status`    | string |                 | `ok`, `skipped` of `fail`
+`line_number`    | int    |                 | zinnummer: eerste is nummer 1
 `label`          | string | indien aanwezig | label van de zin
-`sentence`       | string |            | de getokeniseerde zin
-`alpino_ds`      | string | error: 0   | de parse van de zin
-`log`            | string |            | error-uitvoer van de parser, of van een andere fout
-`parser_build`   | string | optioneel  | indien bekend, en anders dan is vermeld door een `info`-request
-
-TODO: iets anders verzinnen voor `error`
-
-Waardes voor `error`:
-
-waarde | betekenis
--------|----------
-0      | alles OK
-1      | zin overgeslagen
-2      | interne serverfout / zin kon niet geparst worden
+`sentence`       | string |                 | de getokeniseerde zin
+`alpino_ds`      | string | line_status: ok | de parse van de zin
+`log`            | string |                 | error-uitvoer van de parser, of van een andere fout
+`parser_build`   | string | optioneel       | indien bekend, en anders dan is vermeld door een `info`-request
 
 Voorbeeld uitvoer:
 
@@ -371,8 +363,8 @@ Voorbeeld uitvoer:
     "status": "OK",
     "finished": true,
     "batch": [
-{"error":0,"lineno":2,"label":"doc.1.p.1.s.2","sentence":"jij bestaat","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,je,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"jij\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"je\" persoon=\"2v\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,2v,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"jij\" sense=\"jij\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"jij\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg3,intransitive)\" id=\"3\" infl=\"sg3\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,met-t)\" pt=\"ww\" pvagr=\"met-t\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"bestaat\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">jij bestaat</sentence>\n</alpino_ds>\n","log":""},
-{"error":0,"lineno":1,"label":"doc.1.p.1.s.1","sentence":"ik besta","xml":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,fir,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"ik\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"fir\" persoon=\"1\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,1,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"ik\" sense=\"ik\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"ik\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg1,intransitive)\" id=\"3\" infl=\"sg1\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,ev)\" pt=\"ww\" pvagr=\"ev\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"besta\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">ik besta</sentence>\n</alpino_ds>\n","log":""}
+{"line_status":"ok","line_number":2,"label":"doc.1.p.1.s.2","sentence":"jij bestaat","alpino_ds":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,je,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"jij\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"je\" persoon=\"2v\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,2v,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"jij\" sense=\"jij\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"jij\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg3,intransitive)\" id=\"3\" infl=\"sg3\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,met-t)\" pt=\"ww\" pvagr=\"met-t\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"bestaat\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">jij bestaat</sentence>\n</alpino_ds>\n","log":""},
+{"line_status":"ok","line_number":1,"label":"doc.1.p.1.s.1","sentence":"ik besta","alpino_ds":"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<alpino_ds version=\"1.5\">\n  <node begin=\"0\" cat=\"top\" end=\"2\" id=\"0\" rel=\"top\">\n    <node begin=\"0\" cat=\"smain\" end=\"2\" id=\"1\" rel=\"--\">\n      <node begin=\"0\" case=\"nom\" def=\"def\" end=\"1\" frame=\"pronoun(nwh,fir,sg,de,nom,def)\" gen=\"de\" getal=\"ev\" id=\"2\" lcat=\"np\" lemma=\"ik\" naamval=\"nomin\" num=\"sg\" pdtype=\"pron\" per=\"fir\" persoon=\"1\" pos=\"pron\" postag=\"VNW(pers,pron,nomin,vol,1,ev)\" pt=\"vnw\" rel=\"su\" rnum=\"sg\" root=\"ik\" sense=\"ik\" status=\"vol\" vwtype=\"pers\" wh=\"nwh\" word=\"ik\"/>\n      <node begin=\"1\" end=\"2\" frame=\"verb(hebben,sg1,intransitive)\" id=\"3\" infl=\"sg1\" lcat=\"smain\" lemma=\"bestaan\" pos=\"verb\" postag=\"WW(pv,tgw,ev)\" pt=\"ww\" pvagr=\"ev\" pvtijd=\"tgw\" rel=\"hd\" root=\"besta\" sc=\"intransitive\" sense=\"besta\" stype=\"declarative\" tense=\"present\" word=\"besta\" wvorm=\"pv\"/>\n    </node>\n  </node>\n  <sentence sentid=\"82.161.115.144\">ik besta</sentence>\n</alpino_ds>\n","log":""}
     ]
 }
 ```

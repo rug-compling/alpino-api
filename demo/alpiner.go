@@ -335,14 +335,14 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	}
 	switch words[0] {
 	case "text":
-		switch len(words) {
-		case 1:
+		if len(words) == 1 {
 			req.label = "doc"
-		case 2:
-			req.label = words[1]
-		default:
-			x(w, fmt.Errorf("Too many options for data_type \"text\""), 400)
-			return
+		} else {
+			req.label = strings.Join(words[1:], " ")
+			if req.label[0] == '%' || strings.Contains(req.label, "|") {
+				x(w, fmt.Errorf("Label can't start with '%%' or contain '|'"), 400)
+				return
+			}
 		}
 	case "lines":
 		req.lines = true
@@ -451,14 +451,14 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	}
 	switch words[0] {
 	case "text":
-		switch len(words) {
-		case 1:
+		if len(words) == 1 {
 			req.label = "doc"
-		case 2:
-			req.label = words[1]
-		default:
-			x(w, fmt.Errorf("Too many options for data_type \"text\""), 400)
-			return
+		} else {
+			req.label = strings.Join(words[1:], " ")
+			if req.label[0] == '%' || strings.Contains(req.label, "|") {
+				x(w, fmt.Errorf("Label can't start with '%%' or contain '|'"), 400)
+				return
+			}
 		}
 	case "lines":
 		req.lines = true
@@ -582,7 +582,7 @@ func reqOutput(w http.ResponseWriter, req Request) {
 			full := filepath.Join(dir, filename)
 			fp, err := os.Open(full)
 			if err != nil {
-				fmt.Fprintf(w, `{"error":2,"log":%q}`, err.Error())
+				fmt.Fprintf(w, `{"line_status":"fail","log":%q}`, err.Error())
 			} else {
 				io.Copy(w, fp)
 				fp.Close()
@@ -1127,7 +1127,7 @@ WORKER:
 				job.mu.Lock()
 				fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 				if err == nil {
-					fmt.Fprintf(fp, `{"error":1,"line_number":%d,`, task.lineno)
+					fmt.Fprintf(fp, `{"line_status":"skipped","line_number":%d,`, task.lineno)
 					if task.label != "" {
 						fmt.Fprintf(fp, `"label":%q,`, task.label)
 					}
@@ -1141,7 +1141,7 @@ WORKER:
 		}
 
 		var log, xml string
-		status := 0
+		status := "ok"
 		var conn net.Conn
 		var err error
 		for i := 0; i < 10; i++ {
@@ -1171,7 +1171,7 @@ WORKER:
 		}
 
 		if x := strings.TrimSpace(xml); !strings.HasSuffix(x, "</alpino_ds>") {
-			status = 2
+			status = "fail"
 			log = xml
 			xml = ""
 		}
@@ -1182,7 +1182,7 @@ WORKER:
 			job.mu.Lock()
 			fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 			if err == nil {
-				fmt.Fprintf(fp, `{"error":%d,"line_number":%d,`, status, task.lineno)
+				fmt.Fprintf(fp, `{"line_status":%q,"line_number":%d,`, status, task.lineno)
 				if task.label != "" {
 					fmt.Fprintf(fp, `"label":%q,`, task.label)
 				}
