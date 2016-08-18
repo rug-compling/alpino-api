@@ -211,6 +211,8 @@ func main() {
 		close(chLoggerExit) // signaal dat de logger moet stoppen
 		wgLogger.Wait()     // wacht tot de logger is gestopt
 
+		os.RemoveAll(cfg.Tmp)
+
 		os.Exit(0)
 	}()
 
@@ -752,7 +754,7 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 		if req.lines {
 			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/tokenize_no_breaks.sh")
 		} else {
-			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -t '"+shellEscape(req.label)+".p.%p.s.%l|'")
+			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -d '"+shellEscape(req.label)+"'")
 		}
 
 		// setup van stdin en stdout voor de shell
