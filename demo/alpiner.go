@@ -2,7 +2,7 @@
 
 TODO:
 
- * limits:jobs implementeren
+ * max_jobs implementeren
 
 Meer TODOs beneden
 
@@ -135,6 +135,7 @@ var (
 		202: "Accepted",
 		400: "Bad Request",
 		403: "Forbidden",
+		405: "Method Not Allowed",
 		429: "Too Many Requests",
 		500: "Internal Server Error",
 		501: "Not Implemented",
@@ -400,7 +401,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	// Voorwaarde: alle timeouts zijn voor alle servers beschikbaar.
 	server, ok := servers[timeout][req.Parser]
 	if !ok {
-		x(w, fmt.Errorf("Unknown parser %q", req.Parser), 501)
+		x(w, fmt.Errorf("Unknown parser %q", req.Parser), 400)
 		return
 	}
 
@@ -441,6 +442,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	}
 	go doJob(jobID, lineno, server, maxtokens, req.escape)
 
+	http.Error(w, "202 "+status[202], 202)
 	fmt.Fprintf(w, `{
     "code": 202,
     "status": %q,
@@ -1222,11 +1224,11 @@ func cancel(job *Job) {
 }
 
 // http-response bij een fout.
-// TODO: set http response code?
 func x(w http.ResponseWriter, err error, code int) bool {
 	if err == nil {
 		return false
 	}
+	http.Error(w, fmt.Sprintf("%d %s", code, status[code]), code)
 	msg := err.Error()
 	var line string
 	if _, filename, lineno, ok := runtime.Caller(1); ok {

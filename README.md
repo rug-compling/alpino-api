@@ -108,6 +108,7 @@ code | status                  | omschrijving
 202  | `Accepted`              | na succesvolle upload van tekst
 400  | `Bad Request`           | fout van gebruiker
 403  | `Forbidden`             | bijvoorbeeld: ip-adres geblokkeerd vanwege misbruik
+405  | `Method Not Allowed`    | alleen POST is toegestaan
 429  | `Too Many Requests`     | toegang geweigerd vanwege te veel teksten tegelijk
 500  | `Internal Server Error` | er ging iets fout in de server, wat niet fout zou mogen gaan
 501  | `Not Implemented`       | er wordt een optie gevraagd die niet is geïmplementeerd
@@ -188,7 +189,7 @@ Wat `timeout` betreft:
 Wat `parser` betreft:
 
  * Er is bijvoorbeeld een alternatieve parser speciaal voor vraagzinnen.
- * Een onbekende waarde geeft een `501 Not Implemented`. (TODO: Of `400 Bad Request`?)
+ * Een onbekende waarde geeft een `400 Bad Request`.
  * Waarde "" betekent dat de server de standaardparser moet gebruiken.
 
 Wat `max_tokens` betreft:
