@@ -103,6 +103,8 @@ de tekst eerst getokeniseerd. De tekst **moet** gecodeerd zijn in
 
 De tekst kan [speciale tekens](#user-content-specials) bevatten.
 
+Resultaten kunnen opgevraagd worden met [request: output](#user-content-request-output).
+
 Parameters, allen optioneel:
 
 element      | type   | default    | omschrijving
