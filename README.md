@@ -4,6 +4,22 @@ Een API voor een [Alpino](http://www.let.rug.nl/vannoord/alp/Alpino/)-server.
 
 Deze API wordt onder andere gebruikt door [PaQu](https://github.com/rug-compling/paqu).
 
+Inhoud:
+
+ * [Motivatie](#user-content-motivatie)
+ * [Request en result](#user-content-request-en-result)
+ * [Lijst van requests](#user-content-lijst-van-requests)
+  * [Request: parse](#user-content-request-parse)
+  * [Request: tokenize](#user-content-request-tokenize)
+  * [Request: output](#user-content-request-output)
+  * [Request: cancel](#user-content-request-cancel)
+  * [Request: info](#user-content-request-info)
+ * [Speciale tekens](#user-content-specials)
+  * [Commentaren](#user-content-comments)
+  * [Labels](#user-content-labels)
+  * [Instructies voor de parser](#user-content-brackets)
+ * [Tokeniseren van doorlopende tekst](#user-content-partok)
+
 ## Motivatie
 
 Er waren al wel enkele Alpino-servers, maar geen met een publieke API.
@@ -129,6 +145,7 @@ Naast de types `text` en `lines` kan een server andere types
 ondersteunen. Deze types moeten vermeld zijn in `extra_types` als
 resultaat van een [info-request](#user-content-request-info).
 
+<a name="type-text"></a>
 **1—** Voor type is `text`:
 
  * Kan gevolgd worden door een *prefix* die gebruikt wordt als begin
@@ -561,7 +578,8 @@ token  | `none`   | `half` | `full`
 
 Tokenisatie van doorlopende tekst gebeurt door het programma
 `$ALPINO_HOME/Tokenization/partok` met standaardwaardes voor opties
-`-i` en `-t`, en de waarde *prefix* (default: `doc`) voor de optie `-d`.
+`-i` en `-t`, en de [waarde *prefix*](#user-content-type-text) voor de
+optie `-d`.
 
 Tekst wordt opgedeeld in paragrafen en zinnen. Paragrafen worden
 genummerd en zinnen worden per paragraaf genummerd.
