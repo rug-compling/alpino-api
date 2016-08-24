@@ -41,13 +41,13 @@ dienen met methode **POST** te worden gegaan.
 Elk verzoek bevat een element `request` dat aangeeft wat de opdracht aan
 de server is.
 
-request    | omschrijving
------------| ------------
-`parse`    | verzoek om tekst te parsen, zo nodig eerst te tokeniseren
-`tokenize` | verzoek om tekst te tokeniseren
-`output`   | verzoek om (een deel van) de resultaten van een parse terug te sturen
-`cancel`   | verzoek om een parse te annuleren
-`info`     | verzoek om informatie over de server
+request                                    | omschrijving
+-------------------------------------------| ------------
+[parse](#user-content-request-parse)       | verzoek om tekst te parsen, zo nodig eerst te tokeniseren
+[tokenize](#user-content-request-tokenize) | verzoek om tekst te tokeniseren
+[output](#user-content-request-output)     | verzoek om (een deel van) de resultaten van een parse terug te sturen
+[cancel](#user-content-request-cancel)     | verzoek om een parse te annuleren
+[info](#user-content-request-info)         | verzoek om informatie over de server
 
 Elk resultaat verstuurd door de server is een JSON-object, type
 `application/json`, met tenminste de elementen `code` en `status`.
