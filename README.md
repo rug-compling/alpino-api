@@ -274,8 +274,8 @@ mijn_tekst.p.1.s.2|Zinnen lopen door over regeleindes .
 
 ### Request: output
 
-Doel: Opvragen van (deel van) de uitvoer van een job van het type
-`parse`.
+Doel: Opvragen van (deel van) de uitvoer van een
+[Request: parse](#user-content-request-parse).
 
 Parameter, **verplicht**:
 
