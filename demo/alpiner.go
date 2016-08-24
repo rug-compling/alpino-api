@@ -807,18 +807,17 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 						break
 					}
 
-					// spaties en tabs aan begin verwijderen
-					line0 := strings.TrimSpace(line)
+					leeg := strings.TrimSpace(line) == ""
 
 					// als eerste regel leeg is die overslaan
-					if firstline && line0 == "" {
+					if firstline && leeg {
 						firstline = false
 						continue
 					}
 					firstline = false
 
 					// lege regels en commentaren niet tokeniseren
-					if line0 == "" || line[0] == '%' {
+					if leeg || line[0] == '%' {
 						fmt.Fprintln(fpin, "%%RAW%%", hex.EncodeToString([]byte(line)))
 						continue
 					}
