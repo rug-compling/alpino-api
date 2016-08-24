@@ -381,6 +381,8 @@ Geen parameters
 
 element              | type           |           | omschrijving
 ---------------------|----------------|-----------|------------------
+`code`               | int            |           | `200`
+`status`             | string         |           | `OK`
 `api_version`        | [ int, int ]   |           | major en minor versienummer van de API
 `parser_build`       | string         | optioneel | Alpino-versie van de parser
 `tokenizer_build`    | string         | optioneel | Alpino-versie van de tokenizer

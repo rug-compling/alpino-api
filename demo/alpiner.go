@@ -37,7 +37,7 @@ import (
 
 const (
 	VersionMajor = 0
-	VersionMinor = 4
+	VersionMinor = 9
 )
 
 //. Types voor configuratie van de server ......................
