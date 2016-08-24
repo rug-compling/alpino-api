@@ -479,9 +479,9 @@ zinnen. Dit verschilt per `data_type`.
 **1—** Voor type is `text`:
 
 Er worden automatisch labels toegevoegd, bestaand uit een prefix, een
-paragraafnummer en een regelnummer. De standaardwaarde van prefix is
-`doc`, maar dat kun je veranderen door een andere waarde mee te geven
-met de optie `data_type`, bijvoorbeeld:
+paragraafnummer en een regelnummer (zie [onder](#user-content-partok)).
+De standaardwaarde van prefix is `doc`, maar dat kun je veranderen door
+een andere waarde mee te geven met de optie `data_type`, bijvoorbeeld:
 
 ```json
     "data_type": "text mijn_tekst"
