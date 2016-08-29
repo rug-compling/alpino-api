@@ -442,7 +442,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	}
 	go doJob(jobID, lineno, server, maxtokens, req.escape)
 
-	http.Error(w, "202 "+status[202], 202)
+	w.WriteHeader(202)
 	fmt.Fprintf(w, `{
     "code": 202,
     "status": %q,
@@ -1227,7 +1227,7 @@ func x(w http.ResponseWriter, err error, code int) bool {
 	if err == nil {
 		return false
 	}
-	http.Error(w, fmt.Sprintf("%d %s", code, status[code]), code)
+	w.WriteHeader(code)
 	msg := err.Error()
 	var line string
 	if _, filename, lineno, ok := runtime.Caller(1); ok {
