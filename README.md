@@ -336,7 +336,7 @@ element          | type   | voorwaarde          | omschrijving
 `sentence`       | string |                     | de getokeniseerde zin
 `alpino_ds`      | string | `line_status`: `ok` | de parse van de zin
 `log`            | string |                     | fout-uitvoer van de parser, of van een andere fout
-`parser_build`   | string | optioneel           | indien bekend, en anders dan is vermeld door een `info`-request
+`parser_build`   | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
 
 **Voorbeeld uitvoer**
 
