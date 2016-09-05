@@ -440,7 +440,7 @@ element              | type           |           | omschrijving
 
 Wat `parser_build` en `tokenizer_build` betreft:
 
- * Dit is de tekst uit het bestand `$ALPINO_HOME/version`. 
+ * Dit is de tekst uit het bestand `$ALPINO_HOME/version`.
  * Parsen en tokeniseren hoeft niet op dezelfde machine te gebeuren,
    vandaar dat ze apart worden gegeven.
  * Parsen kan op meerdere machines gebeuren, met verschillende versies
@@ -606,6 +606,9 @@ Dit is | geen label|
 
  % Dit is geen commentaar!
 
+% Dit is metadata:
+##META text warnings = none
+
 knmi.meta|
 Vandaag & morgen
 
@@ -614,6 +617,8 @@ Zonnig zomerweer
 % Dit is ook een commentaar.
 
 knmi.main |
+##META int mintemp = 14
+##META int maxtemp = 26
 Het is vandaag een mooie zomerdag. Het is zonnig en droog en de maxima
 lopen uiteen van 22°C op de Wadden tot lokaal 26°C in het zuiden van het
 land. Vanavond verschijnen er in Limburg enkele wolkenvelden, de kans op
@@ -623,7 +628,9 @@ Komende nacht is het helder, maar in het noordoosten kunnen er opnieuw
 enkele mistbanken ontstaan. De minimumtemperatuur loopt uiteen van 10
 graden in het noordoosten tot 14 graden in het zuiden. Er staat een
 zwakke wind uit oost tot noordoost.
-
+% Metadata begint ook een nieuwe paragraaf!
+##META int mintemp =
+##META int maxtemp = 28
 Morgen overdag is het aanvankelijk zonnig en droog. In de loop van de
 middag komt er van het zuiden uit meer bewolking opzetten en neemt
 vooral in het zuiden de kans op een bui toe. In de avond trekt een
@@ -660,9 +667,13 @@ doc.p.2.s.4|3. commentaren
 % Dit is geen label omdat er een | binnenin zit:
 doc.p.3.s.1|Dit is | geen label|
 doc.p.4.s.1|% Dit is geen commentaar !
+% Dit is metadata:
+##META text warnings = none
 knmi.meta.p.1.s.1|Vandaag & morgen
 knmi.meta.p.2.s.1|Zonnig zomerweer
 % Dit is ook een commentaar.
+##META int mintemp = 14
+##META int maxtemp = 26
 knmi.main.p.1.s.1|Het is vandaag een mooie zomerdag .
 knmi.main.p.1.s.2|Het is zonnig en droog en de maxima lopen uiteen van 22°C op de Wadden tot lokaal 26°C in het zuiden van het land .
 knmi.main.p.1.s.3|Vanavond verschijnen er in Limburg enkele wolkenvelden , de kans op neerslag blijft klein .
@@ -671,6 +682,9 @@ knmi.main.p.1.s.4|De noordoostelijke wind is zwak tot matig .
 knmi.main.p.2.s.1|Komende nacht is het helder , maar in het noordoosten kunnen er opnieuw enkele mistbanken ontstaan .
 knmi.main.p.2.s.2|De minimumtemperatuur loopt uiteen van 10 graden in het noordoosten tot 14 graden in het zuiden .
 knmi.main.p.2.s.3|Er staat een zwakke wind uit oost tot noordoost .
+% Metadata begint ook een nieuwe paragraaf!
+##META int mintemp =
+##META int maxtemp = 28
 knmi.main.p.3.s.1|Morgen overdag is het aanvankelijk zonnig en droog .
 knmi.main.p.3.s.2|In de loop van de middag komt er van het zuiden uit meer bewolking opzetten en neemt vooral in het zuiden de kans op een bui toe .
 knmi.main.p.3.s.3|In de avond trekt een gebied met wat buiige regen van het zuidwesten uit het land binnen .

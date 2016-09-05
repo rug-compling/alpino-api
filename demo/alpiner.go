@@ -14,6 +14,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/pebbe/util"
 
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"flag"
@@ -104,6 +105,7 @@ type Task struct {
 	line   string
 	label  string
 	lineno uint64
+	meta   []string
 	job    *Job // Bij welke Job deze Task hoort
 }
 
@@ -820,8 +822,8 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 					}
 					firstline = false
 
-					// lege regels en commentaren niet tokeniseren
-					if leeg || line[0] == '%' {
+					// lege regels, commentaren en metadata niet tokeniseren
+					if leeg || line[0] == '%' || strings.HasPrefix(strings.ToLower(line), "##meta") {
 						fmt.Fprintln(fpin, "%%RAW%%", hex.EncodeToString([]byte(line)))
 						continue
 					}
@@ -951,7 +953,7 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 			fmt.Fprintln(writer, strings.TrimSpace(line[7:]))
 			continue
 		}
-		if line == "" || line[0] == '%' {
+		if line == "" || line[0] == '%' || strings.HasPrefix(strings.ToLower(line), "##meta") {
 			fmt.Fprintln(writer, line)
 			continue
 		}
@@ -1024,6 +1026,10 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 	dir := filepath.Join(cfg.Tmp, fmt.Sprint(jobID))
 	filename := filepath.Join(dir, "00")
 
+	inMeta := false
+	seenMeta := make(map[string]bool)
+	metaLines := make([]string, 0)
+
 	fp, err := os.Open(filename)
 	if err != nil {
 		j.mu.Lock()
@@ -1051,6 +1057,47 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 			if line == "" || line[0] == '%' {
 				continue
 			}
+
+			if strings.HasPrefix(strings.ToLower(line), "##meta") {
+				if !inMeta {
+					inMeta = true
+					seenMeta = make(map[string]bool)
+				}
+				var typ, name, value string
+				aa := strings.SplitN(line, "=", 2)
+				if len(aa) != 2 {
+					continue
+				}
+				value = strings.TrimSpace(aa[1])
+
+				aa = strings.Fields(aa[0])
+				if len(aa) < 3 {
+					continue
+				}
+				typ = aa[1]
+				name = strings.Join(aa[2:], " ")
+
+				// oude waardes verwijderen, maar niet als `name` al gezien is in dit blok
+				if value == "" || !seenMeta[name] {
+					seenMeta[name] = true
+					for i := 0; i < len(metaLines); i++ {
+						aa := strings.Split(metaLines[i], "\t")
+						if aa[1] == name {
+							metaLines = append(metaLines[:i], metaLines[i+1:]...)
+							i--
+						}
+					}
+				}
+
+				// nieuwe waarde toevoegen
+				if value != "" {
+					metaLines = append(metaLines, typ+"\t"+name+"\t"+value)
+				}
+
+				continue
+			}
+			inMeta = false
+
 			a := strings.SplitN(line, "\t", 2)
 			if escape != "none" {
 				words := strings.Fields(a[1])
@@ -1073,10 +1120,15 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 				a[1] = strings.Join(words, " ")
 			}
 			lineno++
+			ml := make([]string, len(metaLines))
+			for i, s := range metaLines {
+				ml[i] = s
+			}
 			queue <- Task{
 				line:   a[1],
 				label:  a[0],
 				lineno: lineno,
+				meta:   ml,
 				job:    &j,
 			}
 
@@ -1197,6 +1249,24 @@ WORKER:
 			job.mu.Lock()
 			fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 			if err == nil {
+
+				// invoegen van metadata
+				if len(task.meta) > 0 {
+					var buf bytes.Buffer
+					fmt.Fprint(&buf, "<metadata>\n")
+					for _, s := range task.meta {
+						aa := strings.Split(s, "\t")
+						fmt.Fprintf(&buf, "    <meta type=%q name=%q value=%q/>\n",
+							html.EscapeString(aa[0]),
+							html.EscapeString(aa[1]),
+							html.EscapeString(aa[2]))
+					}
+					fmt.Fprint(&buf, "  </metadata>\n  ")
+					i := strings.Index(xml, "<node ")
+					if i > 0 {
+						xml = xml[:i] + buf.String() + xml[i:]
+					}
+				}
 
 				// correctie van sentid
 				var sentid string
