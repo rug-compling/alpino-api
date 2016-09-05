@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -27,6 +28,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -143,6 +145,8 @@ var (
 	}
 
 	alpino_build string
+
+	reSentID = regexp.MustCompile(`<sentence sentid=".*?">`)
 
 	// Hoe lang is de server in de lucht?
 	timestart = time.Now()
@@ -1193,6 +1197,16 @@ WORKER:
 			job.mu.Lock()
 			fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 			if err == nil {
+
+				// correctie van sentid
+				var sentid string
+				if task.label == "" {
+					sentid = fmt.Sprint(task.lineno)
+				} else {
+					sentid = task.label
+				}
+				xml = reSentID.ReplaceAllString(xml, `<sentence sentid="`+html.EscapeString(sentid)+`">`)
+
 				fmt.Fprintf(fp, `{"line_status":%q,"line_number":%d,`, status, task.lineno)
 				if task.label != "" {
 					fmt.Fprintf(fp, `"label":%q,`, task.label)
