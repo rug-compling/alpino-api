@@ -1,4 +1,4 @@
-# Alpino API versie 0.9
+# Alpino API versie 0.91
 
 Een API voor een [Alpino](http://www.let.rug.nl/vannoord/alp/Alpino/)-server.
 
@@ -17,6 +17,7 @@ Inhoud:
  * [Speciale tekens](#user-content-specials)
   * [Commentaren](#user-content-comments)
   * [Labels](#user-content-labels)
+  * [Metadata](#user-content-metadata)
   * [Instructies voor de parser](#user-content-brackets)
  * [Tokeniseren van doorlopende tekst](#user-content-partok)
 
@@ -460,7 +461,7 @@ Wat `max_tokens` betreft:
 ## <a name="specials"></a> Speciale tekens
 
 Tekst die je laat parsen of tokeniseren kan tekens bevatten die een
-speciale betekenis hebben: `%` `|` `[` `]`
+speciale betekenis hebben: `%` `|` `##META` `[` `]`
 
 ### <a name="comments"></a> Commentaren
 
@@ -521,6 +522,59 @@ Voorbeeld:
 ```
 line.1|Dit is de eerste zin.
 line.2|Dit is de tweede zin.
+```
+
+### <a name="metadata"></a> Metadata
+
+Metadata begint met de tekst `##META`. Voorbeelden:
+
+```
+line.1|Dit is de eerste zin.
+##META text dag = maandag
+##META text kleur = blauw
+line.2|Dit is de tweede zin.
+##META text kleur = geel
+##META text kleur = groen
+line.3|Dit is de derde zin.
+##META text dag =
+line.4|Dit is de vierde zin.
+```
+
+Metadata bestaat uit een *type*, een *naam* en een *waarde*, de laatste
+twee gescheiden door een is-teken. Het type is één woord. Naam en waarde
+kunnen uit meerdere woorden bestaan. Type en naam kunnen geen is-teken
+bevatten.
+
+Metadata wordt gedefinieerd in blokken. Een metadatablok bevat alleen
+metadata, en eventueel commentaren, lege regels of labels voor
+doorlopende tekst. Dus alles behalve te parsen tekst. Metadata
+gedefineerd in een blok vervangt metadata met dezelfde naam uit een
+eerder blok.
+
+Bovenstaand voorbeeld leidt tot de volgend metadata per zin:
+
+label  | metadata
+-------|---------
+line.1 |
+line.2 | dag = maandag, kleur = blauw
+line.3 | dag = maandag, kleur = geel, kleur = groen
+line.4 | kleur = geel, kleur = groen
+
+Na parsen is de metadata opgenomen in de xml. Bijvoorbeeld:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<alpino_ds version="1.5">
+  <metadata>
+    <meta type="text" name="dag" value="maandag"/>
+    <meta type="text" name="kleur" value="geel"/>
+    <meta type="text" name="kleur" value="groen"/>
+  </metadata>
+  <node begin="0" cat="top" end="6" id="0" rel="top">
+    ...
+  </node>
+  <sentence sentid="line.3">Dit is de derde zin .</sentence>
+</alpino_ds>
 ```
 
 ### <a name="brackets"></a> Instructies voor de parser

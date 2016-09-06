@@ -40,7 +40,7 @@ import (
 
 const (
 	VersionMajor = 0
-	VersionMinor = 9
+	VersionMinor = 91
 )
 
 //. Types voor configuratie van de server ......................
@@ -948,7 +948,7 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 			break
 		}
 
-		// lege regels en commentaren ongewijzigd naar uitvoer
+		// lege regels, commentaren en metadata ongewijzigd naar uitvoer
 		if raw && strings.HasPrefix(line, "%%RAW%%") {
 			fmt.Fprintln(writer, strings.TrimSpace(line[7:]))
 			continue
@@ -1078,7 +1078,7 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 				name = strings.Join(aa[2:], " ")
 
 				// oude waardes verwijderen, maar niet als `name` al gezien is in dit blok
-				if value == "" || !seenMeta[name] {
+				if !seenMeta[name] {
 					seenMeta[name] = true
 					for i := 0; i < len(metaLines); i++ {
 						aa := strings.Split(metaLines[i], "\t")
