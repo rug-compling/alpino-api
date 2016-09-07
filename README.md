@@ -545,6 +545,9 @@ twee gescheiden door een is-teken. Het type is één woord. Naam en waarde
 kunnen uit meerdere woorden bestaan. Type en naam kunnen geen is-teken
 bevatten.
 
+De DTD van `alpino_ds` versie 1.5 definieert de volgende waardes voor type:
+`text` `int` `float` `date` `datetime`
+
 Metadata wordt gedefinieerd in blokken. Een metadatablok bevat alleen
 metadata, en eventueel commentaren, lege regels of labels voor
 doorlopende tekst. Dus alles behalve te parsen tekst. Metadata
