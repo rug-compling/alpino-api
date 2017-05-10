@@ -1262,7 +1262,10 @@ WORKER:
 							html.EscapeString(aa[2]))
 					}
 					fmt.Fprint(&buf, "  </metadata>\n  ")
-					i := strings.Index(xml, "<node ")
+					i := strings.Index(xml, "<parser ")
+					if i < 0 {
+						i = strings.Index(xml, "<node ")
+					}
 					if i > 0 {
 						xml = xml[:i] + buf.String() + xml[i:]
 					}
