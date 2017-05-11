@@ -6,7 +6,8 @@ then
     exit 1
 fi
 
-export PROLOGMAXSIZE=800M
+# Are you sure you have enough memory for this?
+export PROLOGMAXSIZE=8000M
 
 DEBUG=0
 
