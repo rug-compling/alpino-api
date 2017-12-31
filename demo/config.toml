@@ -12,7 +12,7 @@ Info: https://github.com/rug-compling/alpino-api
 
 port = 11200
 
-tmp = "/dev/shm/tmp/alpiner"
+tmp = "/dev/shm/alpiner"
 
 # werkelijke interval een minuut langer dan de interval gerapporteerd aan gebruiker
 interval = 300
