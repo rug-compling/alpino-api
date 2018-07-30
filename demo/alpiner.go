@@ -512,6 +512,7 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		if err != nil {
 			if started {
 				fmt.Fprintf(w, "<<<ERROR>>> %v", err)
+				x(nil, err, 500)
 			} else {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Cache-Control", "no-cache")
@@ -540,6 +541,7 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	if tokerr != nil {
 		if started {
 			fmt.Fprintf(w, "<<<ERROR>>> %v", tokerr)
+			x(nil, tokerr, 500)
 		} else {
 			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Cache-Control", "no-cache")
@@ -602,6 +604,7 @@ func reqOutput(w http.ResponseWriter, req Request) {
 			fp, err := os.Open(full)
 			if err != nil {
 				fmt.Fprintf(w, `{"line_status":"fail","log":%q}`, err.Error())
+				x(nil, err, 500)
 			} else {
 				io.Copy(w, fp)
 				fp.Close()
@@ -1032,6 +1035,7 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 
 	fp, err := os.Open(filename)
 	if err != nil {
+		x(nil, err, 500)
 		j.mu.Lock()
 		j.err = err
 		j.code = 500
@@ -1047,6 +1051,7 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 				break
 			}
 			if err != nil {
+				x(nil, err, 500)
 				j.mu.Lock()
 				j.err = err
 				j.code = 500
@@ -1201,6 +1206,7 @@ WORKER:
 					fmt.Fprintf(fp, `"sentence":%q,"log":"line too long: %d tokens"}`, task.line, n)
 					err = fp.Close()
 				}
+				x(nil, err, 500)
 				job.count--
 				job.mu.Unlock()
 				continue
@@ -1231,6 +1237,7 @@ WORKER:
 		}
 
 		if err != nil {
+			x(nil, err, 500)
 			job.err = err
 			job.code = 500
 			cancel(job)
@@ -1291,6 +1298,7 @@ WORKER:
 				fmt.Fprintf(fp, `"log":%q}`, log)
 				err = fp.Close()
 			}
+			x(nil, err, 500)
 			job.count--
 			job.mu.Unlock()
 		}
@@ -1314,19 +1322,23 @@ func x(w http.ResponseWriter, err error, code int) bool {
 	if err == nil {
 		return false
 	}
-	w.WriteHeader(code)
+	if w != nil {
+		w.WriteHeader(code)
+	}
 	msg := err.Error()
 	var line string
 	if _, filename, lineno, ok := runtime.Caller(1); ok {
 		line = fmt.Sprintf("%v:%v", filepath.Base(filename), lineno)
 		msg = line + ": " + msg
 	}
-	fmt.Fprintf(w, `{
+	if w != nil {
+		fmt.Fprintf(w, `{
     "code": %d,
     "status": %q,
     "message": %q
 }
 `, code, status[code], msg)
+	}
 
 	chLog <- fmt.Sprintf("%d %s: %s -- %v", code, status[code], line, err)
 
