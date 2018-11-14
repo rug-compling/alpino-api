@@ -149,6 +149,7 @@ var (
 	alpino_build string
 
 	reSentID = regexp.MustCompile(`<sentence sentid=".*?">`)
+	reParser = regexp.MustCompile(`<parser.*?>`)
 
 	// Hoe lang is de server in de lucht?
 	timestart = time.Now()
@@ -1258,17 +1259,15 @@ WORKER:
 			if err == nil {
 
 				// invoegen van versienummer en datum
-				attr := fmt.Sprintf(" version=%q date=%q", alpino_build, time.Now().Format(time.RFC3339))
-				i := strings.Index(xml, "<parser ")
-				if i < 0 {
-					i = strings.Index(xml, "<node ")
-					if i > 0 {
-						xml = xml[:i] + "<parser" + attr + "/>    \n" + xml[i:]
+				xml = reParser.ReplaceAllStringFunc(xml, func(s string) string {
+					if !strings.Contains(s, "date=") {
+						s = s[:7] + fmt.Sprintf(" date=%q", time.Now().Format(time.RFC3339)) + s[7:]
 					}
-				} else {
-					i += 7
-					xml = xml[:i] + attr + xml[i:]
-				}
+					if !strings.Contains(s, "version=") {
+						s = s[:7] + fmt.Sprintf(" version=%q", alpino_build) + s[7:]
+					}
+					return s
+				})
 
 				// invoegen van metadata
 				if len(task.meta) > 0 {
