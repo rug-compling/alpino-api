@@ -1257,6 +1257,19 @@ WORKER:
 			fp, err := os.Create(filepath.Join(cfg.Tmp, fmt.Sprint(task.job.id), fmt.Sprintf("%08d", task.lineno)))
 			if err == nil {
 
+				// invoegen van versienummer en datum
+				attr := fmt.Sprintf(" version=%q date=%q", alpino_build, time.Now().Format(time.RFC3339))
+				i := strings.Index(xml, "<parser ")
+				if i < 0 {
+					i = strings.Index(xml, "<node ")
+					if i > 0 {
+						xml = xml[:i] + "<parser" + attr + "/>    \n" + xml[i:]
+					}
+				} else {
+					i += 7
+					xml = xml[:i] + attr + xml[i:]
+				}
+
 				// invoegen van metadata
 				if len(task.meta) > 0 {
 					var buf bytes.Buffer
