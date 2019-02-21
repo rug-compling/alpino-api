@@ -208,19 +208,7 @@ func main() {
 		signal.Notify(chSignal, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 		sig := <-chSignal
 		chLog <- fmt.Sprintf("Signal: %v", sig)
-
-		close(chGlobalExit) // signaal dat alle verwerking moet stoppen
-		//wg.Wait()
-
-		chLog <- fmt.Sprintf("Uptime: %v", time.Since(timestart))
-
-		time.Sleep(time.Second)
-		close(chLoggerExit) // signaal dat de logger moet stoppen
-		wgLogger.Wait()     // wacht tot de logger is gestopt
-
-		os.RemoveAll(cfg.Tmp)
-
-		os.Exit(0)
+		closeAndExit(0)
 	}()
 
 	// Elke worker parst één zin tegelijk.
@@ -418,12 +406,14 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 
 	dir := filepath.Join(cfg.Tmp, fmt.Sprint(jobID))
 	if x(w, os.Mkdir(dir, 0700), 500) {
+		closeAndExit(1)
 		return
 	}
 
 	fp, err := os.Create(filepath.Join(dir, "00"))
 	if x(w, err, 500) {
 		os.RemoveAll(dir)
+		closeAndExit(1)
 		return
 	}
 	lineno, err := tokenize(fp, req, rds...)
@@ -519,6 +509,7 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 				w.Header().Add("Pragma", "no-cache")
 				x(w, err, 500)
 			}
+			// TODO: closeAndExit(1) ?
 			break
 		}
 		started = true
@@ -548,6 +539,7 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 			w.Header().Add("Pragma", "no-cache")
 			x(w, tokerr, 500)
 		}
+		// TODO: closeAndExit(1) ?
 	}
 }
 
@@ -1306,6 +1298,21 @@ WORKER:
 }
 
 //. Overige hulpfuncties .......................................
+
+func closeAndExit(errcode int) {
+	close(chGlobalExit) // signaal dat alle verwerking moet stoppen
+	//wg.Wait()
+
+	chLog <- fmt.Sprintf("Uptime: %v", time.Since(timestart))
+
+	time.Sleep(time.Second)
+	close(chLoggerExit) // signaal dat de logger moet stoppen
+	wgLogger.Wait()     // wacht tot de logger is gestopt
+
+	os.RemoveAll(cfg.Tmp)
+
+	os.Exit(errcode)
+}
 
 // Cancel een job.
 // Aanname: job is gelockt.
