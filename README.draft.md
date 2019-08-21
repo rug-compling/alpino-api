@@ -175,8 +175,8 @@ dan geldt de limiet van de server.
 Nieuw in versie 0.92. Niet elke server hoeft dit te implementeren. Zie beneden bij [info](#user-content-request-info).
 
  * default: standaard uitvoer
- * `withUD`: uitvoer met [Universal Dependencies](https://universaldependencies.org/) verwerkt in het Alpino-formaat
- * `UDonly`: uitvoer van alleen Universal Dependencies
+ * `with_ud`: uitvoer met [Universal Dependencies](https://universaldependencies.org/) verwerkt in het Alpino-formaat
+ * `ud_only`: uitvoer van alleen Universal Dependencies
 
 **optie:** `parser`
 
@@ -346,9 +346,9 @@ element          | type   | voorwaarde          |omschrijving
 `sentence`       | string |                     | de getokeniseerde zin
 `alpino_ds`      | string | `line_status`: `ok` | de parse van de zin: `alpino_ds` versie 1.5 of hoger, minimaal 1.10 als met UD
 `log`            | string |                     | fout-uitvoer van de parser, of van een andere fout
-`ud`             | string | `output`: `UDonly`  | (vanaf versie 0.92) Universal Dependencies in [CoNLL-U](https://universaldependencies.org/format.html)-formaat
-`ud_log`         | string | `output`: `withUD` of `UDonly` | (vanaf versie 0.92) fout-uitvoer van afleiding van UD
 `parser_build`   | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
+`ud`             | string | `output`: `ud_only`  | (vanaf versie 0.92) Universal Dependencies in [CoNLL-U](https://universaldependencies.org/format.html)-formaat
+`ud_log`         | string | `output`: `with_ud` of `ud_only` | (vanaf versie 0.92) fout-uitvoer van afleiding van UD
 
 **Voorbeeld uitvoer**
 
@@ -428,6 +428,7 @@ element              | type           |           | omschrijving
 `max_tokens`         | int            | optioneel | maximum lengte van een zin in tokens, 0 is geen limiet
 `extra_types`        | [ string ... ] | optioneel | extra types voor `data_type`
 `extra_output`       | [ string ... ] | optioneel | extra soorten uitvoer voor `output` (vanaf versie 0.92)
+`ud_build`           | string         | optioneel | ID-string van de gebruikte UD-library (vanaf versie 0.92)
 
 **Voorbeeld uitvoer**
 
@@ -448,7 +449,7 @@ element              | type           |           | omschrijving
     "max_jobs": 6,
     "maxtokens": 100,
     "extra_types": [ ],
-    "extra_output": [ "withUD", "UDonly" ]
+    "extra_output": [ "with_ud", "ud_only" ]
 }
 ```
 
@@ -473,8 +474,8 @@ Wat `max_tokens` betreft:
 
 Wat `extra_output` betreft, nieuw in versie 0.92:
 
- * `withUD`: uitvoer met Universal Dependencies opgenomen in het Alpino-formaat
- * `UDonly`: uitvoer van alleen Universal Dependencies
+ * `with_ud`: uitvoer met Universal Dependencies opgenomen in het Alpino-formaat
+ * `ud_only`: uitvoer van alleen Universal Dependencies
 
 ## <a name="specials"></a> Speciale tekens
 
