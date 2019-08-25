@@ -13,6 +13,7 @@ package main
 import (
 	"github.com/BurntSushi/toml"
 	"github.com/pebbe/util"
+	"github.com/rug-compling/alud/v2"
 
 	"bytes"
 	"encoding/hex"
@@ -40,7 +41,7 @@ import (
 
 const (
 	VersionMajor = 0
-	VersionMinor = 91
+	VersionMinor = 92
 )
 
 //. Types voor configuratie van de server ......................
@@ -76,6 +77,7 @@ type Request struct {
 	Timeout    int    // parse
 	Parser     string // parse
 	Max_tokens int    // parse
+	Ud         *bool  // parse
 	lines      bool   // parse, tokenize
 	tokens     bool   // parse
 	escape     string // parse
@@ -96,6 +98,7 @@ type Job struct {
 	code      int
 	maxtokens int
 	server    string // Door welke Alpino-server de zinnen geparst moeten worden.
+	ud        bool   // Universal Dependencies maken?
 }
 
 // Een enkele zin uit het corpus.
@@ -107,6 +110,7 @@ type Task struct {
 	lineno uint64
 	meta   []string
 	job    *Job // Bij welke Job deze Task hoort
+	ud     bool // Universal Dependencies maken?
 }
 
 //. Globale variabelen .........................................
@@ -436,7 +440,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	} else {
 		maxtokens = max(req.Max_tokens, cfg.Max_tokens)
 	}
-	go doJob(jobID, lineno, server, maxtokens, req.escape)
+	go doJob(jobID, lineno, server, maxtokens, req.escape, req.Ud == nil || *req.Ud == true)
 
 	w.WriteHeader(202)
 	fmt.Fprintf(w, `{
@@ -670,6 +674,7 @@ func reqInfo(w http.ResponseWriter) {
     "api_version": [ %d, %d ],
     "parser_build": %q,
     "tokenizer_build": %q,
+    "ud_build": %q,
     "about": %q,
     "workers": %d,
     "total_running_jobs": %d,
@@ -680,6 +685,7 @@ func reqInfo(w http.ResponseWriter) {
 		VersionMinor,
 		alpino_build,
 		alpino_build,
+		alud.VersionID(),
 		cfg.About,
 		cfg.Workers,
 		njobs,
@@ -1003,7 +1009,7 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 // getokeniseerd, en opgeslagen, dan start het een goroutine met
 // deze functie voor verdere verwerking.
 
-func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape string) {
+func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape string, ud bool) {
 	chLog <- fmt.Sprintf("New job %d, %d lines", jobID, nlines)
 
 	j := Job{
@@ -1013,6 +1019,7 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 		cancelled: make(chan bool),
 		server:    server,
 		maxtokens: maxtokens,
+		ud:        ud,
 	}
 	jobsMu.Lock()
 	jobs[jobID] = &j
@@ -1205,7 +1212,7 @@ WORKER:
 			}
 		}
 
-		var log, xml string
+		var log, xml, udlog string
 		status := "ok"
 		var conn net.Conn
 		var err error
@@ -1240,6 +1247,16 @@ WORKER:
 			status = "fail"
 			log = xml
 			xml = ""
+		}
+
+		if job.ud && xml != "" {
+			xml2, err := alud.UdAlpino([]byte(xml), "nofilename.xml")
+			if xml2 != "" {
+				xml = xml2
+			}
+			if err != nil {
+				udlog = err.Error()
+			}
 		}
 
 		select {
@@ -1287,7 +1304,11 @@ WORKER:
 				if xml != "" {
 					fmt.Fprintf(fp, `"alpino_ds":%q,`, xml)
 				}
-				fmt.Fprintf(fp, `"log":%q}`, log)
+				fmt.Fprintf(fp, `"log":%q`, log)
+				if udlog != "" {
+					fmt.Fprintf(fp, `,"ud_log":%q`, udlog)
+				}
+				fmt.Fprint(fp, "}")
 				err = fp.Close()
 			}
 			x(nil, err, 500)
