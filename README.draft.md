@@ -409,7 +409,7 @@ element              | type           |           | omschrijving
 `api_version`        | [ int, int ]   |           | major en minor versienummer van de API
 `parser_build`       | string         | optioneel | Alpino-versie van de parser
 `tokenizer_build`    | string         | optioneel | Alpino-versie van de tokenizer
-`ud_build` [0.92]    | string         | optioneel | Indien geïmplementeerd: ID-string van de gebruikte UD-library
+`ud_build` [0.92]    | string         | see below | Indien geïmplementeerd: ID-string van de gebruikte UD-library
 `about`              | string         | optioneel | vrije tekst, beschrijving, contact-info, etc.
 `workers`            | int            | optioneel | aantal werkers op dit moment, bezig of wachtend
 `total_running_jobs` | int            | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
@@ -456,7 +456,7 @@ Wat `parser_build` en `tokenizer_build` betreft:
 
 Wat `ud_build` betreft: [0.92]
 
- * Leeg als Universal Dependencies niet zijn geïmplementeerd.
+ * Niet aanwezig als Universal Dependencies niet zijn geïmplementeerd. Anders verplicht.
 
 Wat `max_jobs` betreft:
 
