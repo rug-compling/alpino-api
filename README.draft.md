@@ -124,13 +124,13 @@ Resultaten kunnen opgevraagd worden met [Request: output](#user-content-request-
 
 Parameters, allen optioneel:
 
-element      | type   | default    | omschrijving           | versie
--------------|--------|------------|------------------------| ------
-`data_type`  | string | `text doc` | soort data: zie onder |
-`max_tokens` | int    | `0`        | skip zinnen die meer dan dit aantal tokens hebben |
-`output`     | string | *leeg*     | alternatieve uitvoer | 0.92   
-`parser`     | string | *leeg*     | gebruik alternatieve parser |
-`timeout`    | int    | `0`        | timeout in seconden voor parsen van één zin |
+element      | type   | default    | omschrijving
+-------------|--------|------------|------------------------
+`data_type`  | string | `text doc` | soort data: zie onder
+`max_tokens` | int    | `0`        | skip zinnen die meer dan dit aantal tokens hebben
+`parser`     | string | *leeg*     | gebruik alternatieve parser
+`timeout`    | int    | `0`        | timeout in seconden voor parsen van één zin
+`ud` [0.92]  | bool   | `true`     | include Universal Dependencies
 
 **optie:** `data_type`
 
@@ -169,14 +169,6 @@ De waarde `0` betekent geen limiet.
 
 Als de waarde groter is dan de limiet die de server heeft ingesteld,
 dan geldt de limiet van de server.
-
-**optie:** `output`
-
-Nieuw in versie 0.92. Niet elke server hoeft dit te implementeren. Zie beneden bij [info](#user-content-request-info).
-
- * default: standaard uitvoer
- * `with_ud`: uitvoer met [Universal Dependencies](https://universaldependencies.org/) verwerkt in het Alpino-formaat
- * `ud_only`: uitvoer van alleen Universal Dependencies
 
 **optie:** `parser`
 
@@ -338,17 +330,17 @@ volgende batch op te vragen.
 
 Elementen in een item in `batch`:
 
-element          | type   | voorwaarde          |omschrijving
------------------|--------|---------------------|-------------
-`line_status`    | string |                     | `ok`, `skipped` of `fail`
-`line_number`    | int    |                     | volgnummer van de zin: eerste is nummer 1
-`label`          | string | indien aanwezig     | label van de zin
-`sentence`       | string |                     | de getokeniseerde zin
-`alpino_ds`      | string | `line_status`: `ok` | de parse van de zin: `alpino_ds` versie 1.5 of hoger, minimaal 1.10 als met UD
-`log`            | string |                     | fout-uitvoer van de parser, of van een andere fout
-`parser_build`   | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
-`ud`             | string | `output`: `ud_only`  | (vanaf versie 0.92) Universal Dependencies in [CoNLL-U](https://universaldependencies.org/format.html)-formaat
-`ud_log`         | string | `output`: `with_ud` of `ud_only` | (vanaf versie 0.92) fout-uitvoer van afleiding van UD
+element           | type   | voorwaarde          |omschrijving
+------------------|--------|---------------------|-------------
+`line_status`     | string |                     | `ok`, `skipped` of `fail`
+`line_number`     | int    |                     | volgnummer van de zin: eerste is nummer 1
+`label`           | string | indien aanwezig     | label van de zin
+`sentence`        | string |                     | de getokeniseerde zin
+`alpino_ds`       | string | `line_status`: `ok` | de parse van de zin: `alpino_ds` versie 1.5 of hoger, minimaal 1.10 als met UD
+`log`             | string |                     | fout-uitvoer van de parser, of van een andere fout
+`parser_build`    | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
+`ud_build` [0.92] | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
+`ud_log` [0.92]   | string | optioneel           | fout-uitvoer van de afleiding van Universal Dependencies
 
 **Voorbeeld uitvoer**
 
@@ -417,6 +409,7 @@ element              | type           |           | omschrijving
 `api_version`        | [ int, int ]   |           | major en minor versienummer van de API
 `parser_build`       | string         | optioneel | Alpino-versie van de parser
 `tokenizer_build`    | string         | optioneel | Alpino-versie van de tokenizer
+`ud_build` [0.92]    | string         | optioneel | Indien geïmplementeerd: ID-string van de gebruikte UD-library
 `about`              | string         | optioneel | vrije tekst, beschrijving, contact-info, etc.
 `workers`            | int            | optioneel | aantal werkers op dit moment, bezig of wachtend
 `total_running_jobs` | int            | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
@@ -427,8 +420,6 @@ element              | type           |           | omschrijving
 `max_jobs`           | int            |           | maximum aantal gelijktijdige jobs per IP-adres
 `max_tokens`         | int            | optioneel | maximum lengte van een zin in tokens, 0 is geen limiet
 `extra_types`        | [ string ... ] | optioneel | extra types voor `data_type`
-`extra_output`       | [ string ... ] | optioneel | extra soorten uitvoer voor `output` (vanaf versie 0.92)
-`ud_build`           | string         | optioneel | ID-string van de gebruikte UD-library (vanaf versie 0.92)
 
 **Voorbeeld uitvoer**
 
@@ -439,6 +430,7 @@ element              | type           |           | omschrijving
     "api_version": [ 1, 0 ],
     "parser_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
     "tokenizer_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
+    "ud_build": "ALUD2.4.0-alpha001",
     "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",
     "workers": 10,
     "total_running_jobs": 45,
@@ -462,6 +454,10 @@ Wat `parser_build` en `tokenizer_build` betreft:
    van Alpino. Afwijkende versies kunnen vermeld worden per zin in een
    `batch`.
 
+Wat `ud_build` betreft: [0.92]
+
+ * Leeg als Universal Dependencies niet zijn geïmplementeerd.
+
 Wat `max_jobs` betreft:
 
  * Overschrijding van de limiet kan leiden tot een ban van het IP-adres
@@ -471,11 +467,6 @@ Wat `max_tokens` betreft:
 
  * De limiet kan door de client lager worden gezet, maar niet hoger.
  * Zinnen die te lang zijn resulteren in zins-status `skipped`.
-
-Wat `extra_output` betreft, nieuw in versie 0.92:
-
- * `with_ud`: uitvoer met Universal Dependencies opgenomen in het Alpino-formaat
- * `ud_only`: uitvoer van alleen Universal Dependencies
 
 ## <a name="specials"></a> Speciale tekens
 
