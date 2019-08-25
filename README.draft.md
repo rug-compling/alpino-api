@@ -402,24 +402,24 @@ Geen parameters
 
 **Resultaat**
 
-element              | type           |           | omschrijving
----------------------|----------------|-----------|------------------
-`code`               | int            |           | `200`
-`status`             | string         |           | `OK`
-`api_version`        | [ int, int ]   |           | major en minor versienummer van de API
-`parser_build`       | string         | optioneel | Alpino-versie van de parser
-`tokenizer_build`    | string         | optioneel | Alpino-versie van de tokenizer
-`ud_build` [0.92]    | string         | see below | Indien geïmplementeerd: ID-string van de gebruikte UD-library
-`about`              | string         | optioneel | vrije tekst, beschrijving, contact-info, etc.
-`workers`            | int            | optioneel | aantal werkers op dit moment, bezig of wachtend
-`total_running_jobs` | int            | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
-`timeout_default`    | int            | optioneel | default timeout in seconden voor parsen van één zin
-`timeout_max`        | int            | optioneel | de maximale timeout in seconden voor parsen van één zin
-`timeout_values`     | [ int ... ]    | optioneel | ondersteunde timeouts voor parsen van één zin
-`parsers`            | [ string ... ] | optioneel | lijst met alternatieve parsers
-`max_jobs`           | int            |           | maximum aantal gelijktijdige jobs per IP-adres
-`max_tokens`         | int            | optioneel | maximum lengte van een zin in tokens, 0 is geen limiet
-`extra_types`        | [ string ... ] | optioneel | extra types voor `data_type`
+element              | type           |             | omschrijving
+---------------------|----------------|-------------|------------------
+`code`               | int            |             | `200`
+`status`             | string         |             | `OK`
+`api_version`        | [ int, int ]   |             | major en minor versienummer van de API
+`parser_build`       | string         | optioneel   | Alpino-versie van de parser
+`tokenizer_build`    | string         | optioneel   | Alpino-versie van de tokenizer
+`ud_build` [0.92]    | string         | zie beneden | Indien geïmplementeerd: ID-string van de gebruikte UD-library
+`about`              | string         | optioneel   | vrije tekst, beschrijving, contact-info, etc.
+`workers`            | int            | optioneel   | aantal werkers op dit moment, bezig of wachtend
+`total_running_jobs` | int            | optioneel   | totaal aantal jobs (parse) die op dit moment verwerkt worden
+`timeout_default`    | int            | optioneel   | default timeout in seconden voor parsen van één zin
+`timeout_max`        | int            | optioneel   | de maximale timeout in seconden voor parsen van één zin
+`timeout_values`     | [ int ... ]    | optioneel   | ondersteunde timeouts voor parsen van één zin
+`parsers`            | [ string ... ] | optioneel   | lijst met alternatieve parsers
+`max_jobs`           | int            |             | maximum aantal gelijktijdige jobs per IP-adres
+`max_tokens`         | int            | optioneel   | maximum lengte van een zin in tokens, 0 is geen limiet
+`extra_types`        | [ string ... ] | optioneel   | extra types voor `data_type`
 
 **Voorbeeld uitvoer**
 
@@ -440,8 +440,7 @@ element              | type           |           | omschrijving
     "parsers": [ "qa" ],
     "max_jobs": 6,
     "maxtokens": 100,
-    "extra_types": [ ],
-    "extra_output": [ "with_ud", "ud_only" ]
+    "extra_types": [ ]
 }
 ```
 
