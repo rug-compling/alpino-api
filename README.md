@@ -1,4 +1,4 @@
-# Alpino API versie 0.91
+# Alpino API versie 0.92
 
 Een API voor een [Alpino](http://www.let.rug.nl/vannoord/alp/Alpino/)-server.
 
@@ -130,6 +130,7 @@ element      | type   | default    | omschrijving
 `max_tokens` | int    | `0`        | skip zinnen die meer dan dit aantal tokens hebben
 `parser`     | string | *leeg*     | gebruik alternatieve parser
 `timeout`    | int    | `0`        | timeout in seconden voor parsen van één zin
+`ud`         | bool   | `true`     | include Universal Dependencies
 
 **optie:** `data_type`
 
@@ -329,15 +330,17 @@ volgende batch op te vragen.
 
 Elementen in een item in `batch`:
 
-element          | type   | voorwaarde          | omschrijving
------------------|--------|---------------------|-------------
-`line_status`    | string |                     | `ok`, `skipped` of `fail`
-`line_number`    | int    |                     | volgnummer van de zin: eerste is nummer 1
-`label`          | string | indien aanwezig     | label van de zin
-`sentence`       | string |                     | de getokeniseerde zin
-`alpino_ds`      | string | `line_status`: `ok` | de parse van de zin: `alpino_ds` versie 1.5 of hoger
-`log`            | string |                     | fout-uitvoer van de parser, of van een andere fout
-`parser_build`   | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
+element           | type   | voorwaarde          |omschrijving
+------------------|--------|---------------------|-------------
+`line_status`     | string |                     | `ok`, `skipped` of `fail`
+`line_number`     | int    |                     | volgnummer van de zin: eerste is nummer 1
+`label`           | string | indien aanwezig     | label van de zin
+`sentence`        | string |                     | de getokeniseerde zin
+`alpino_ds`       | string | `line_status`: `ok` | de parse van de zin: `alpino_ds` versie 1.5 of hoger, minimaal 1.10 als met UD
+`log`             | string |                     | fout-uitvoer van de parser, of van een andere fout
+`parser_build`    | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
+`ud_build`        | string | optioneel           | indien bekend, en anders dan is vermeld in de response op een `info`-request
+`ud_log`          | string | optioneel           | fout-uitvoer van de afleiding van Universal Dependencies
 
 **Voorbeeld uitvoer**
 
@@ -399,23 +402,24 @@ Geen parameters
 
 **Resultaat**
 
-element              | type           |           | omschrijving
----------------------|----------------|-----------|------------------
-`code`               | int            |           | `200`
-`status`             | string         |           | `OK`
-`api_version`        | [ int, int ]   |           | major en minor versienummer van de API
-`parser_build`       | string         | optioneel | Alpino-versie van de parser
-`tokenizer_build`    | string         | optioneel | Alpino-versie van de tokenizer
-`about`              | string         | optioneel | vrije tekst, beschrijving, contact-info, etc.
-`workers`            | int            | optioneel | aantal werkers op dit moment, bezig of wachtend
-`total_running_jobs` | int            | optioneel | totaal aantal jobs (parse) die op dit moment verwerkt worden
-`timeout_default`    | int            | optioneel | default timeout in seconden voor parsen van één zin
-`timeout_max`        | int            | optioneel | de maximale timeout in seconden voor parsen van één zin
-`timeout_values`     | [ int ... ]    | optioneel | ondersteunde timeouts voor parsen van één zin
-`parsers`            | [ string ... ] | optioneel | lijst met alternatieve parsers
-`max_jobs`           | int            |           | maximum aantal gelijktijdige jobs per IP-adres
-`max_tokens`         | int            | optioneel | maximum lengte van een zin in tokens, 0 is geen limiet
-`extra_types`        | [ string ... ] | optioneel | extra types voor `data_type`
+element              | type           |             | omschrijving
+---------------------|----------------|-------------|------------------
+`code`               | int            |             | `200`
+`status`             | string         |             | `OK`
+`api_version`        | [ int, int ]   |             | major en minor versienummer van de API
+`parser_build`       | string         | optioneel   | Alpino-versie van de parser
+`tokenizer_build`    | string         | optioneel   | Alpino-versie van de tokenizer
+`ud_build`           | string         | zie beneden | Indien geïmplementeerd: ID-string van de gebruikte UD-library
+`about`              | string         | optioneel   | vrije tekst, beschrijving, contact-info, etc.
+`workers`            | int            | optioneel   | aantal werkers op dit moment, bezig of wachtend
+`total_running_jobs` | int            | optioneel   | totaal aantal jobs (parse) die op dit moment verwerkt worden
+`timeout_default`    | int            | optioneel   | default timeout in seconden voor parsen van één zin
+`timeout_max`        | int            | optioneel   | de maximale timeout in seconden voor parsen van één zin
+`timeout_values`     | [ int ... ]    | optioneel   | ondersteunde timeouts voor parsen van één zin
+`parsers`            | [ string ... ] | optioneel   | lijst met alternatieve parsers
+`max_jobs`           | int            |             | maximum aantal gelijktijdige jobs per IP-adres
+`max_tokens`         | int            | optioneel   | maximum lengte van een zin in tokens, 0 is geen limiet
+`extra_types`        | [ string ... ] | optioneel   | extra types voor `data_type`
 
 **Voorbeeld uitvoer**
 
@@ -426,6 +430,7 @@ element              | type           |           | omschrijving
     "api_version": [ 1, 0 ],
     "parser_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
     "tokenizer_build": "Alpino-x86_64-Linux-glibc-2.19-20973-sicstus",
+    "ud_build": "ALUD2.4.0-alpha001",
     "about": "Experimentele server om de API te testen.\nNiet voor productiedoeleinden.\nContact: Peter Kleiweg <p.c.j.kleiweg@rug.nl>",
     "workers": 10,
     "total_running_jobs": 45,
@@ -447,6 +452,10 @@ Wat `parser_build` en `tokenizer_build` betreft:
  * Parsen kan op meerdere machines gebeuren, met verschillende versies
    van Alpino. Afwijkende versies kunnen vermeld worden per zin in een
    `batch`.
+
+Wat `ud_build` betreft:
+
+ * Niet aanwezig als Universal Dependencies niet zijn geïmplementeerd. Anders verplicht.
 
 Wat `max_jobs` betreft:
 
