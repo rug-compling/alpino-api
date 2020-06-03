@@ -41,7 +41,7 @@ import (
 
 const (
 	VersionMajor = 0
-	VersionMinor = 92
+	VersionMinor = 93
 )
 
 //. Types voor configuratie van de server ......................
@@ -116,6 +116,16 @@ type Task struct {
 //. Globale variabelen .........................................
 
 var (
+	isTrue = map[string]bool{
+		"true": true,
+		"yes":  true,
+		"ja":   true,
+		"1":    true,
+		"t":    true,
+		"y":    true,
+		"j":    true,
+	}
+
 	// Als true, echo log naar stdout.
 	verbose = flag.Bool("v", false, "verbose")
 
@@ -1095,6 +1105,13 @@ func doJob(jobID int64, nlines uint64, server string, maxtokens int, escape stri
 
 				// nieuwe waarde toevoegen
 				if value != "" {
+					if typ == "bool" {
+						if isTrue[strings.ToLower(value)] {
+							value = "true"
+						} else {
+							value = "false"
+						}
+					}
 					metaLines = append(metaLines, typ+"\t"+name+"\t"+value)
 				}
 
@@ -1249,8 +1266,15 @@ WORKER:
 			xml = ""
 		}
 
+		var sentid string
+		if task.label == "" {
+			sentid = fmt.Sprint(task.lineno)
+		} else {
+			sentid = task.label
+		}
+
 		if job.ud && xml != "" {
-			xml2, err := alud.UdAlpino([]byte(xml), "nofilename.xml")
+			xml2, err := alud.UdAlpino([]byte(xml), "nofilename.xml", sentid)
 			if xml2 != "" {
 				xml = xml2
 			}
@@ -1288,12 +1312,6 @@ WORKER:
 				}
 
 				// correctie van sentid
-				var sentid string
-				if task.label == "" {
-					sentid = fmt.Sprint(task.lineno)
-				} else {
-					sentid = task.label
-				}
 				xml = reSentID.ReplaceAllString(xml, `<sentence sentid="`+html.EscapeString(sentid)+`">`)
 
 				fmt.Fprintf(fp, `{"line_status":%q,"line_number":%d,`, status, task.lineno)

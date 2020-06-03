@@ -1,4 +1,4 @@
-# Alpino API versie 0.92
+# Alpino API versie 0.93
 
 Een API voor een [Alpino](http://www.let.rug.nl/vannoord/alp/Alpino/)-server.
 
@@ -556,6 +556,10 @@ bevatten.
 
 De DTD van `alpino_ds` versie 1.5 definieert de volgende waardes voor type:
 `text` `int` `float` `date` `datetime`
+
+Vanaf versie 1.11 is daar het type `bool` bijgekomen. De API dient
+waardes zoals `TRUE`, `Yes`, `1`, etc, te normaliseren naar `true`,
+en het tegendeel naar `false`.
 
 Metadata wordt gedefinieerd in blokken. Een metadatablok bevat alleen
 metadata, en eventueel commentaren, lege regels of labels voor
