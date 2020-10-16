@@ -206,7 +206,7 @@ func main() {
 	}
 
 	util.CheckErr(os.RemoveAll(cfg.Tmp))
-	util.CheckErr(os.Mkdir(cfg.Tmp, 0700))
+	util.CheckErr(os.MkdirAll(cfg.Tmp, 0700))
 
 	rand.Seed(time.Now().Unix())
 
@@ -419,7 +419,7 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 	}
 
 	dir := filepath.Join(cfg.Tmp, fmt.Sprint(jobID))
-	if x(w, os.Mkdir(dir, 0700), 500) {
+	if x(w, os.MkdirAll(dir, 0700), 500) {
 		closeAndExit(1)
 		return
 	}
