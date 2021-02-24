@@ -1,0 +1,6 @@
+github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
+github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/pebbe/util v0.9.0 h1:PMZd+CpWb8GbWEmFGlL3qd6XPuywl6xFIbrXWi870OA=
+github.com/pebbe/util v0.9.0/go.mod h1:ynWl/SFX4+Seb9fpjVlYevr1f4TP7FrCmyZHiBCg69Q=
+github.com/rug-compling/alud v2.5.0+incompatible h1:P12taEjmXYNIf17KYguKysnOjQyn9pcrunMm976f35o=
+github.com/rug-compling/alud v2.5.0+incompatible/go.mod h1:JKcwXJJlKThRnZF/61U4pa+YdUkArdcvU6N25RQOqvc=
