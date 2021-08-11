@@ -56,3 +56,19 @@ parser = "qa"
 server = "127.0.0.1:11223"
 timeout = 600
 parser = "qa"
+
+# Wie heeft toegang?
+# Selectie op basis van ip-adres.
+# Als dit ontbreekt heeft iedereen toegang.
+# Een adres is een ip-adres, een CIDR ip-adresmasker, of het woord "all".
+# Voor CIDR, zie: http://nl.wikipedia.org/wiki/Classless_Inter-Domain_Routing .
+# De EERSTE regel die matcht bepaalt of de bezoeker toegang heeft.
+# Als geen enkele regel matcht heeft de gebruiker toegang.
+
+[[access]]
+allow = true
+addr  = [ "127.0.0.1/8", "::1", "123.123.123.123" ]
+
+[[access]]
+allow = false
+addr  = [ "all" ]

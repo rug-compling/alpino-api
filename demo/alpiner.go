@@ -60,12 +60,21 @@ type Config struct {
 	Timeout_max     int
 	Timeout_values  []int
 	Alpino          []AlpinoT
+	Access          []AccessT
 }
 
 type AlpinoT struct {
 	Timeout int
 	Parser  string
 	Server  string
+}
+
+type AccessT struct {
+	Allow bool
+	Addr  []string
+	all   bool
+	ip    []net.IP
+	ipnet []*net.IPNet
 }
 
 //. Type voor API-request ......................................
@@ -189,6 +198,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Fout in %s: onbekend: %#v", flag.Arg(0), un)
 		return
 	}
+	accessSetup()
 
 	// Gegevens over beschikbare parsers verwerken.
 	seen := make(map[string]bool)
@@ -277,6 +287,11 @@ func main() {
 //. Handlers voor http-request .................................
 
 func noHandler(w http.ResponseWriter, r *http.Request) {
+	if !access(r.RemoteAddr) {
+		x(w, fmt.Errorf("Verboden toegang."), 403)
+		return
+	}
+
 	logRequest(r)
 	chLog <- "Not found: " + r.URL.Path
 	http.NotFound(w, r)
@@ -284,6 +299,11 @@ func noHandler(w http.ResponseWriter, r *http.Request) {
 
 // Om te testen of het programma reageert.
 func upHandler(w http.ResponseWriter, r *http.Request) {
+	if !access(r.RemoteAddr) {
+		x(w, fmt.Errorf("Verboden toegang."), 403)
+		return
+	}
+
 	if r.URL.Path != "/up" {
 		noHandler(w, r)
 		return
@@ -298,6 +318,12 @@ func upHandler(w http.ResponseWriter, r *http.Request) {
 
 // De eigenlijk API.
 func jsonHandler(w http.ResponseWriter, r *http.Request) {
+	if !access(r.RemoteAddr) {
+		logRequest(r)
+		x(w, fmt.Errorf("Verboden toegang."), 403)
+		return
+	}
+
 	if r.URL.Path != "/json" {
 		noHandler(w, r)
 		return
@@ -1472,4 +1498,72 @@ func min(a ...int) int {
 		}
 	}
 	return b
+}
+
+func accessSetup() {
+	for i, access := range cfg.Access {
+		cfg.Access[i].ip = make([]net.IP, 0, len(access.Addr))
+		cfg.Access[i].ipnet = make([]*net.IPNet, 0, len(access.Addr))
+		for _, addr := range access.Addr {
+			if addr == "all" {
+				cfg.Access[i].all = true
+				break
+			}
+			_, ipnet, err := net.ParseCIDR(addr)
+			if err == nil {
+				cfg.Access[i].ipnet = append(cfg.Access[i].ipnet, ipnet)
+				continue
+			}
+			ip := net.ParseIP(addr)
+			if ip != nil {
+				cfg.Access[i].ip = append(cfg.Access[i].ip, ip)
+				continue
+			}
+			util.CheckErr(fmt.Errorf("Ongeldig IP-adres in config file: %s", addr))
+		}
+	}
+}
+
+func access(addr string) bool {
+	if len(cfg.Access) == 0 {
+		return true
+	}
+
+	// poortnummer verwijderen
+	ad := addr
+	i := strings.LastIndex(addr, ":")
+	if i > 0 {
+		ad = addr[:i]
+	}
+
+	// haken weghalen bij IPv6
+	if l := len(ad); l > 1 {
+		if ad[0] == '[' && ad[l-1] == ']' {
+			ad = ad[1 : l-1]
+		}
+	}
+
+	// ip parsen
+	ip := net.ParseIP(ad)
+	if ip == nil {
+		chLog <- fmt.Sprintf("Kan IP-adres niet parsen: %v", addr)
+		return false
+	}
+
+	for _, a := range cfg.Access {
+		if a.all {
+			return a.Allow
+		}
+		for _, ipnet := range a.ipnet {
+			if ipnet.Contains(ip) {
+				return a.Allow
+			}
+		}
+		for _, aip := range a.ip {
+			if aip.Equal(ip) {
+				return a.Allow
+			}
+		}
+	}
+	return true
 }

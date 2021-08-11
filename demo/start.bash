@@ -9,7 +9,7 @@ fi
 # Are you sure you have enough memory for this?
 export PROLOGMAXSIZE=8000M
 
-DEBUG=0
+DEBUG=1
 
 if [ $DEBUG = 0 ]
 then
