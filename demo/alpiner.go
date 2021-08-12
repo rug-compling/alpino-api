@@ -288,7 +288,7 @@ func main() {
 
 func noHandler(w http.ResponseWriter, r *http.Request) {
 	if !access(r.RemoteAddr) {
-		x(w, fmt.Errorf("Verboden toegang."), 403)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -300,7 +300,7 @@ func noHandler(w http.ResponseWriter, r *http.Request) {
 // Om te testen of het programma reageert.
 func upHandler(w http.ResponseWriter, r *http.Request) {
 	if !access(r.RemoteAddr) {
-		x(w, fmt.Errorf("Verboden toegang."), 403)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
@@ -320,7 +320,7 @@ func upHandler(w http.ResponseWriter, r *http.Request) {
 func jsonHandler(w http.ResponseWriter, r *http.Request) {
 	if !access(r.RemoteAddr) {
 		logRequest(r)
-		x(w, fmt.Errorf("Verboden toegang."), 403)
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
