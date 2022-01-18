@@ -1245,7 +1245,7 @@ WORKER:
 					if task.label != "" {
 						fmt.Fprintf(fp, `"label":%q,`, task.label)
 					}
-					fmt.Fprintf(fp, `"sentence":%q,"log":"line too long: %d tokens"}`, task.line, n)
+					fmt.Fprintf(fp, `"sentence":%q,"log":"line too long: %d tokens (%d allowed)"}`, task.line, n, maxtokens)
 					err = fp.Close()
 				}
 				x(nil, err, 500)
