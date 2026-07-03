@@ -1,4 +1,4 @@
-# Alpino API versie 0.93
+# Alpino API versie 0.94
 
 Een API voor een [Alpino](http://www.let.rug.nl/vannoord/alp/Alpino/)-server.
 
@@ -138,17 +138,18 @@ Het element `data_type` geeft aan wat voor type tekst je wilt laten
 verwerken. Na het type kunnen nog opties volgen, alles van elkaar
 gescheiden door spaties.
 
-type    | omschrijving
---------|--------------------------------------------------------
-`text`  | de data bestaat uit doorlopende tekst
-`lines` | de data bestaat uit één zin per regel
+type        | omschrijving
+------------|------------------------------------------------------------
+`text`      | de data bestaat uit doorlopende tekst
+`textlines` | de data bestaat uit één of meer zinnen per regel
+`lines`     | de data bestaat uit één zin per regel
 
-Naast de types `text` en `lines` kan een server andere types
+Naast de types `text`, `textlines` en `lines` kan een server andere types
 ondersteunen. Deze types moeten vermeld zijn in `extra_types` als
 resultaat van een [info-request](#user-content-request-info).
 
 <a name="type-text"></a>
-**1—** Voor type is `text`:
+**1—** Voor type is `text` of `textlines`:
 
  * Kan gevolgd worden door een *prefix* die gebruikt wordt als begin
    van gegenereerde labels. Default is `doc`.
@@ -196,6 +197,15 @@ Tekst volgt na JSON-object:
 }
 Dit is doorlopende tekst. Zinnen lopen
 door over regeleindes.
+```
+
+```json
+{
+    "request": "parse",
+    "data_type": "textlines mijn_tekst"
+}
+Dit is de eerste zin. Dit is de tweede
+Dit is de derde zin. En dit de vierde
 ```
 
 ```json
@@ -486,7 +496,7 @@ commentaar.
 Een `|` in de tekst wordt gebruikt om een label mee te geven aan de
 zinnen. Dit verschilt per `data_type`.
 
-**1—** Voor type is `text`:
+**1—** Voor type is `text` of `textlines`:
 
 Er worden automatisch labels toegevoegd, bestaand uit een prefix, een
 paragraafnummer en een regelnummer (zie [onder](#user-content-partok)).

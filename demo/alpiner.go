@@ -88,6 +88,7 @@ type Request struct {
 	Max_tokens int    // parse
 	Ud         *bool  // parse
 	lines      bool   // parse, tokenize
+	textlines  bool   // parse, tokenize
 	tokens     bool   // parse
 	escape     string // parse
 	label      string // parse, tokenize
@@ -380,7 +381,8 @@ func reqParse(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		words = []string{"text"}
 	}
 	switch words[0] {
-	case "text":
+	case "text", "textlines":
+		req.textlines = words[0] == "textlines"
 		if len(words) == 1 {
 			req.label = "doc"
 		} else {
@@ -499,7 +501,8 @@ func reqTokenize(w http.ResponseWriter, req Request, rds ...io.Reader) {
 		words = []string{"text"}
 	}
 	switch words[0] {
-	case "text":
+	case "text", "textlines":
+		req.textlines = words[0] == "textlines"
 		if len(words) == 1 {
 			req.label = "doc"
 		} else {
@@ -799,7 +802,11 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 		if req.lines {
 			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/tokenize_no_breaks.sh")
 		} else {
-			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -d '"+shellEscape(req.label)+"'")
+			optn := ""
+			if req.textlines {
+				optn = "-n "
+			}
+			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -d "+optn+"'"+shellEscape(req.label)+"'")
 		}
 
 		// setup van stdin en stdout voor de shell
