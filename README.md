@@ -1,4 +1,4 @@
-# Alpino API versie 0.94
+# Alpino API versie 0.95
 
 Een API voor een [Alpino](http://www.let.rug.nl/vannoord/alp/Alpino/)-server.
 

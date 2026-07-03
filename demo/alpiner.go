@@ -804,9 +804,9 @@ func tokenize(writer io.Writer, req Request, readers ...io.Reader) (uint64, erro
 		} else {
 			optn := ""
 			if req.textlines {
-				optn = "-n "
+				optn = "-n"
 			}
-			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok -d "+optn+"'"+shellEscape(req.label)+"'")
+			cmd = exec.Command("/bin/sh", "-c", "$ALPINO_HOME/Tokenization/partok "+optn+" -d '"+shellEscape(req.label)+"'")
 		}
 
 		// setup van stdin en stdout voor de shell
